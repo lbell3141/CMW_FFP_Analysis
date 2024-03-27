@@ -46,7 +46,8 @@ dat_ffp <- dat_file %>%
   filter(u_star > 0.2)%>%
   select(yyyy, mm, day, HH_UTC, MM, zm, d, z0, u_mean, L, sigma_v, u_star, wind_dir)%>%
   filter(across(everything(), ~ . != "NA"))%>%
-  filter(HH_UTC %in% 8:5)
+  filter(HH_UTC %in% 8:17)
+  #%>%filter(yyyy %in% 2018:2021)
 
 dat_ffp$L = as.numeric(dat_ffp$L)
 dat_ffp$sigma_v = as.numeric(dat_ffp$sigma_v)
@@ -71,4 +72,4 @@ write.csv(NW_dat_ffp, pathtoNWOutput, row.names = FALSE)
 SE_dat_ffp <- dat_ffp%>%
   filter(wind_dir %in% 90:170)
 
-write.csv(NW_dat_ffp, pathtoSEOutput, row.names = FALSE)
+write.csv(SE_dat_ffp, pathtoSEOutput, row.names = FALSE)
