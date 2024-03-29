@@ -76,6 +76,8 @@ for (i in seq_along(split_dat)) {
 for (i in seq_along(split_dat)) {
   plot <- plot + geom_line(data = split_dat[[i]], aes(x = doy, y = movavg), color = rainbow(length(split_dat))[i])
 }
+#gghighlight
+
 
 # Print the plot
 print(plot)
