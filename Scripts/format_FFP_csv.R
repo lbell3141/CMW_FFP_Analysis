@@ -61,7 +61,7 @@ write.csv(dat_ffp, pathtoFullDaytimeOutput, row.names = FALSE)
 #===============================================================================
 
 NW_dat_ffp <- dat_ffp%>%
-  filter(wind_dir %in% 270:350)
+  filter(wind_dir %in% 270:360)
 
 write.csv(NW_dat_ffp, pathtoNWOutput, row.names = FALSE)
 
@@ -70,6 +70,6 @@ write.csv(NW_dat_ffp, pathtoNWOutput, row.names = FALSE)
 #===============================================================================
 
 SE_dat_ffp <- dat_ffp%>%
-  filter(wind_dir %in% 90:170)
+  filter(wind_dir %in% 90:180)
 
 write.csv(SE_dat_ffp, pathtoSEOutput, row.names = FALSE)
