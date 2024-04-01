@@ -5,6 +5,7 @@ library(dplyr)
 library(plantecophys)
 library(ggplot2)
 library(zoo)
+library(gghighlight)
 
 dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv",  na.strings = "-9999", header = TRUE, sep = ",", skip = 2)
 dat_file$TIMESTAMP_START <- ymd_hm(as.character(dat_file$TIMESTAMP_START))
@@ -55,34 +56,69 @@ dat_voi = dat_file %>%
   filter(lag(precip) == 0, lead(precip) == 0)%>%
   filter(precip == 0) 
 
-#Split into 8 wind directions
+#split into 8 wind directions
 deg_int <- seq(0, 360, by = 45)
 split_dat <- split(dat_voi, cut(dat_voi$wind_dir, deg_int, include.lowest = TRUE, labels = FALSE))
 
-# Create a ggplot object
-plot <- ggplot()
+dir_names <- c("0-45", "45-90","90-135","135-180","180-225", "225-270", "270-315", "315-360") 
+dir_colors <- c("lightgrey","lightgrey", "red", "maroon", "lightgrey", "lightgrey", "blue", "skyblue", "lightgrey", "lightgrey")
 
-
+#arrange by doy and calculate rolling mean (k = window parameter)
 for (i in seq_along(split_dat)) {
-  # Arrange the data frame by 'doy'
-  split_dat[[i]] <- split_dat[[i]] %>% arrange(doy)
-  
-  # Calculate moving average and add it as a new column
+  split_dat[[i]] <- split_dat[[i]] %>% 
+    arrange(doy) %>%
+    mutate(wind_direction = dir_names[i])  # Add a column to identify wind direction category
   split_dat[[i]]$movavg <- rollmean(split_dat[[i]]$gpp, k = 500, fill = NA, align = "center")
 }
 
+#make plot obj
+plot <- ggplot()
 
-# Add geom_point for each data frame in split_dat
 for (i in seq_along(split_dat)) {
-  plot <- plot + geom_line(data = split_dat[[i]], aes(x = doy, y = movavg), color = rainbow(length(split_dat))[i])
-}
-#gghighlight
+  plot <- plot + 
+    geom_line(data = split_dat[[i]], aes(x = doy, y = movavg, color = wind_direction),  linewidth = 1.1)  
+  }
 
+#adding legend
+plot <- plot + 
+  scale_color_manual(values = dir_colors, 
+                     breaks = dir_names, 
+                     labels = dir_names) +
+  labs(x = "Day of Year", y = "GPP (µmolCO2 m-2 s-1)", main = "Annual GGP Flux by Wind Direction", color = "Wind Direction (Degrees)") +
+  theme_minimal()
 
-# Print the plot
 print(plot)
 
 
+#=====================four directions===========================================
+deg_int <- seq(0, 360, by = 90)
+split_dat <- split(dat_voi, cut(dat_voi$wind_dir, deg_int, include.lowest = TRUE, labels = FALSE))
 
+dir_names <- c("0-90","90-180","180-270", "270-360") 
+
+#arrange by doy and calculate rolling mean (k = window parameter)
+for (i in seq_along(split_dat)) {
+  split_dat[[i]] <- split_dat[[i]] %>% 
+    arrange(doy) %>%
+    mutate(wind_direction = dir_names[i])  # Add a column to identify wind direction category
+  split_dat[[i]]$movavg <- rollmean(split_dat[[i]]$gpp, k = 500, fill = NA, align = "center")
+}
+
+#make plot obj
+plot <- ggplot()
+
+for (i in seq_along(split_dat)) {
+  plot <- plot + 
+    geom_line(data = split_dat[[i]], aes(x = doy, y = movavg, color = wind_direction))  # Map wind direction category to color aesthetic
+}
+
+#adding legend
+plot <- plot + 
+  scale_color_manual(values = rainbow(length(split_dat)), 
+                     breaks = dir_names, 
+                     labels = dir_names) +
+  theme_minimal()
+
+print(plot)
 
 
