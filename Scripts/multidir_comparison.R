@@ -63,7 +63,7 @@ split_dat <- split(dat_voi, cut(dat_voi$wind_dir, deg_int, include.lowest = TRUE
 dir_names <- c("0-45", "45-90","90-135","135-180","180-225", "225-270", "270-315", "315-360") 
 dir_colors <- c("lightgrey","lightgrey", "red", "maroon", "lightgrey", "lightgrey", "blue", "skyblue", "lightgrey", "lightgrey")
 
-#arrange by doy and calculate rolling mean (k = window parameter)
+#arrange by doy and calculate moving average (k = window parameter)
 for (i in seq_along(split_dat)) {
   split_dat[[i]] <- split_dat[[i]] %>% 
     arrange(doy) %>%
@@ -100,7 +100,7 @@ dir_names <- c("0-90","90-180","180-270", "270-360")
 for (i in seq_along(split_dat)) {
   split_dat[[i]] <- split_dat[[i]] %>% 
     arrange(doy) %>%
-    mutate(wind_direction = dir_names[i])  # Add a column to identify wind direction category
+    mutate(wind_direction = dir_names[i]) 
   split_dat[[i]]$movavg <- rollmean(split_dat[[i]]$gpp, k = 500, fill = NA, align = "center")
 }
 
@@ -109,7 +109,7 @@ plot <- ggplot()
 
 for (i in seq_along(split_dat)) {
   plot <- plot + 
-    geom_line(data = split_dat[[i]], aes(x = doy, y = movavg, color = wind_direction))  # Map wind direction category to color aesthetic
+    geom_line(data = split_dat[[i]], aes(x = doy, y = movavg, color = wind_direction)) 
 }
 
 #adding legend
@@ -121,4 +121,81 @@ plot <- plot +
 
 print(plot)
 
+#===========================moving window=======================================
+#create moving window for wind directions
+#window names used for ID later
+#window medians to be used later in plotting
+window_size <- 5
+window_list <- list()
+window_names <- character(length(window_list))
+window_median <- numeric(length(window_list))
 
+for (i in 1:360) {
+  start <- (i - 1) %% 360
+  end <- (start + window_size -1) %%360
+  window_list[[i]] <- c(start, end)
+  
+  window_names[[i]] <- paste(start, "-", end, sep = "") 
+  window_median[[i]] <- median(start, end)
+}  
+
+
+#subset flux data for each window in list
+#conditional statement because window wraps around from 257-3 degrees
+split_dat <- list()
+for(i in 1: length(window_list)) {
+  start <- window_list[[i]][1]
+  end <-  window_list[[i]][2]
+  if (end > start){
+    sub_dat <- dat_voi%>%
+      filter(wind_dir >= start & wind_dir <= end)
+  } else{
+    sub_dat <- dat_voi%>%
+    filter((wind_dir >= start & wind_dir <= 360) | (wind_dir >= 0 & wind_dir <= end))
+  }
+  split_dat[[i]] <- sub_dat
+}  
+  
+#calculate moving avg for each frame
+#arrange by doy and calculate rolling mean (k = window parameter)
+for (i in seq_along(split_dat)) {
+  split_dat[[i]] <- split_dat[[i]] %>% 
+    arrange(doy)%>%
+    mutate(wind_direction = window_names[i]) 
+  split_dat[[i]]$movavg <- rollmean(split_dat[[i]]$gpp, k = 5, fill = NA, align = "center")
+}
+
+#integrate gpp (for avg area under curves)  
+#function for trapezoidal integration: calculates interval width, then area 
+trap_int <- function(x, y) {
+  dx <- diff(x)
+  area <- sum((y[-1] + y[-length(y)]) * dx) / 2
+  return(area)
+}
+
+#vector to store values
+int_gpp <- numeric(length(split_dat))
+
+#integrate each frame in list with loop
+  #extract x (time) and y (gpp) values from each frame for calculation w function
+  #movavg calculation leaves NA that causes error in function calculations, so extract real values only from x and y vectors (!is.na)
+  #apply function
+for (i in seq_along(split_dat)) {
+  time <- split_dat[[i]]$doy
+  gpp_movavg <- split_dat[[i]]$movavg
+  
+  non_na <- !is.na(gpp_movavg)
+  time <- time[non_na]
+  gpp_movavg <- gpp_movavg[non_na]
+  
+  int_gpp[i] <- trap_int(time, gpp_movavg)
+}
+
+#plot midpoint and integrated gpp
+plot_frame <- data.frame(window_median, int_gpp)
+
+plot <- ggplot(data = plot_frame, aes(window_median, int_gpp))+
+          geom_point() + 
+          labs(x = "Wind Direction Window Median", y = "Total Annual GPP", title = "Wind Direction Comparison")
+
+plot
