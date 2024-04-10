@@ -1,6 +1,4 @@
 #Wind direction characterization
-
-
 library(lubridate)
 library(dplyr)
 library(plantecophys)
@@ -57,13 +55,25 @@ dat_voi = dat_file %>%
   filter(lag(precip) == 0, lead(precip) == 0)%>%
   filter(precip == 0) 
 
-NW_dat_ffp <- dat_voi%>%
-  filter(wind_dir %in% 270:360)
-SE_dat_ffp <- dat_voi%>%
-  filter(wind_dir %in% 90:180)
+#NW_dat_ffp <- dat_voi%>%
+#  filter(wind_dir %in% 270:360)
+#SE_dat_ffp <- dat_voi%>%
+#  filter(wind_dir %in% 90:180)
 
 #===============================================================================
-#============================1. Diurnal Variation ==============================
+#==============Interannual Variability of median wind direction ================
+#===============================================================================
+
+intan_var_doy <- dat_voi%>%
+  group_by(yyyy, doy)%>%
+  summarize(med_doy = median(wind_dir, na.rm = T))
+intan_var_an <- dat_voi%>%
+  group_by(yyyy)%>%
+  summarize(med_yr = median(wind_dir, na.rm = T))
+#combine dfs and plot
+
+#===============================================================================
+#============================Diurnal Variation ==============================
 #===============================================================================
 
 NW_dat_ffp_HH <- NW_dat_ffp%>%
