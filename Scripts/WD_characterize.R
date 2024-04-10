@@ -89,6 +89,7 @@ ggplot(intan_combd, aes(x = doy, y = med_doy, color = factor(yyyy))) +
   geom_point(alpha = 0.7) +  # Add transparency to lines
   labs(x = "Day of Year", y = "Value", color = "Year") +
   theme_minimal()
+
 #===============================================================================
 #============================Diurnal Variation ==============================
 #===============================================================================
