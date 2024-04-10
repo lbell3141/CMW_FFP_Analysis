@@ -70,8 +70,25 @@ intan_var_doy <- dat_voi%>%
 intan_var_an <- dat_voi%>%
   group_by(yyyy)%>%
   summarize(med_yr = median(wind_dir, na.rm = T))
-#combine dfs and plot
+intan_combd <- merge(intan_var_an, intan_var_doy)
+intan_combd$day_record_num <- seq_len(nrow(intan_combd))
+intan_combd$date <- as.Date(paste0(intan_combd$yyyy, "-",intan_combd$doy), format = "%Y-%j")
 
+#full time series (20 yr record)
+ggplot(intan_combd, aes(x = date)) +
+  geom_line(aes(y = med_doy, color = "Daily Median Wind Direction")) +
+  geom_point(aes(y = med_yr, color = "Annual Median Wind Direction")) +
+  scale_color_manual(values = c("red", "lightblue"), labels = c("Daily Median", "Annual Median")) +
+  labs(x = "Day of Year", y = "Median Wind Direction", color = NULL, 
+       title = "Interannual Variability of Wind Direction") +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+#time series for each year over 365 days
+ggplot(intan_combd, aes(x = doy, y = med_doy, color = factor(yyyy))) +
+  geom_point(alpha = 0.7) +  # Add transparency to lines
+  labs(x = "Day of Year", y = "Value", color = "Year") +
+  theme_minimal()
 #===============================================================================
 #============================Diurnal Variation ==============================
 #===============================================================================
