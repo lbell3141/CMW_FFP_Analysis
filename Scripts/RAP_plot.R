@@ -3,6 +3,7 @@
 #data = RAP biomass product from 2001 - 2021
 
 library(terra)
+library(viridis)
 
 pathtoRAPrasts <- "./Data/RAP"
 pathtoFFPoutline <- "./Data/RAP/2017_FFP_Outline/twi_ffp_sec.shp"
@@ -35,7 +36,10 @@ names(combd_rast) <- c("Herbaceous", "Woody")
 dif_rast <- combd_rast[[2]] - combd_rast[[1]]
 ffp <- vect(pathtoFFPoutline)
 
-plot(dif_rast, col=terrain.colors(15), main="Woody and Herbaceous per Pixel at US-CMW")
+#format plot
+extent <- c(-110.18, -110.1755, 31.6615, 31.666)
+dif_rast <- crop(dif_rast, extent)
+plot(dif_rast, col= viridis(15), main="Woody and Herbaceous Cover per Pixel at US-CMW")
 lines(ffp, col="black", lwd=2)
 
 
