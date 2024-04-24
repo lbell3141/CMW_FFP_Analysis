@@ -39,7 +39,32 @@ ffp <- vect(pathtoFFPoutline)
 #format plot
 extent <- c(-110.18, -110.1755, 31.6615, 31.666)
 dif_rast <- crop(dif_rast, extent)
-plot(dif_rast, col= viridis(15), main="Woody and Herbaceous Cover per Pixel at US-CMW")
-lines(ffp, col="black", lwd=2)
+
+#function for radially segmented lines
+#dividing the radians of a circle 
+#set line length 
+#set line style
+plot_lines <- function(center_x, center_y, num_lines, line_length) {
+  angles <- seq(0, 2*pi, length.out = num_lines + 1)[-1]
+  end_x <- center_x + line_length * cos(angles)
+  end_y <- center_y + line_length * sin(angles)
+  for (i in 1:num_lines) {
+    lines(c(center_x, end_x[i]), c(center_y, end_y[i]), col = "black", lty = "dashed")
+  }
+}
+
+#plot
+plot(dif_rast, col = viridis(15), main = "Woody and Herbaceous Cover per Pixel at US-CMW")
+
+
+#add ffp 90th extent shapefile
+lines(ffp, col = "black", lwd = 2)
+
+#add lines
+center_x <- mean(extent[1:2])
+center_y <- mean(extent[3:4])
+num_lines <- 8  
+line_length <- 0.1  
+plot_lines(center_x, center_y, num_lines, line_length)
 
 
