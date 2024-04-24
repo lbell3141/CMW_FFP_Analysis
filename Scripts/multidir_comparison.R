@@ -156,14 +156,47 @@ for(i in 1: length(window_list)) {
   split_dat[[i]] <- sub_dat
 }  
   
+#calculate average gpp by wind direction (dataframe in list)
+avg_gpp <- numeric(length(split_dat))
+
+for (i in seq_along(split_dat)) {
+  avg_gpp[i] <- mean(split_dat[[i]]$gpp, na.rm = TRUE)
+}
+
+#plot midpoint and integrated gpp
+plot_frame <- data.frame(window_median, avg_gpp)
+
+plot <- ggplot(data = plot_frame, aes(window_median, avg_gpp))+
+  geom_point() + 
+  labs(x = "Wind Direction Window Median", y = "Average GPP per Wind Direction", title = "Wind Direction Comparison")
+
+plot
+
+#=================================WD frequency==================================
+num_obs <- numeric(length(split_dat))
+
+for (i in seq_along(split_dat)) {
+  num_obs[i] <- nrow(split_dat[[i]])
+}
+plot_frame <- data.frame(window_median, num_obs)
+plot <- ggplot(data = plot_frame, aes(window_median, num_obs))+
+  geom_point() + 
+  labs(x = "Wind Direction Window Median", y = "Number of Observations", title = "Wind Direction Frequency")
+
+plot
+#===============================================================================
 #calculate moving avg for each frame
 #arrange by doy and calculate rolling mean (k = window parameter)
-for (i in seq_along(split_dat)) {
-  split_dat[[i]] <- split_dat[[i]] %>% 
-    arrange(doy)%>%
-    mutate(wind_direction = window_names[i]) 
-  split_dat[[i]]$movavg <- rollmean(split_dat[[i]]$gpp, k = 5, fill = NA, align = "center")
-}
+#for (i in seq_along(split_dat)) {
+#  split_dat[[i]] <- split_dat[[i]] %>% 
+#    arrange(doy)%>%
+#    mutate(wind_direction = window_names[i]) 
+#  split_dat[[i]]$movavg <- rollmean(split_dat[[i]]$gpp, k = 5, fill = NA, align = "center")
+#}
+
+#===============================================================================
+#=======================integrating fluxes: unnecessary==========================
+#===============================================================================
 
 #integrate gpp (for avg area under curves)  
 #function for trapezoidal integration: calculates interval width, then area 
@@ -199,3 +232,6 @@ plot <- ggplot(data = plot_frame, aes(window_median, int_gpp))+
           labs(x = "Wind Direction Window Median", y = "Total Annual GPP", title = "Wind Direction Comparison")
 
 plot
+#===============================================================================
+#===============================================================================
+#===============================================================================
