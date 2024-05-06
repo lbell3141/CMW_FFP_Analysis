@@ -61,7 +61,7 @@ dat_voi = dat_file %>%
 #  filter(wind_dir %in% 90:180)
 
 #===============================================================================
-#==============Interannual Variability of median wind direction ================
+#==============Interannual Variability of Median Wind Direction ================
 #===============================================================================
 
 intan_var_doy <- dat_voi%>%
@@ -74,11 +74,11 @@ intan_combd <- merge(intan_var_an, intan_var_doy)
 intan_combd$day_record_num <- seq_len(nrow(intan_combd))
 intan_combd$date <- as.Date(paste0(intan_combd$yyyy, "-",intan_combd$doy), format = "%Y-%j")
 
-#full time series (20 yr record)
+#full time series (21 yr record)
 ggplot(intan_combd, aes(x = date)) +
   geom_line(aes(y = med_doy, color = "Daily Median Wind Direction")) +
   geom_point(aes(y = med_yr, color = "Annual Median Wind Direction")) +
-  scale_color_manual(values = c("red", "lightblue"), labels = c("Daily Median", "Annual Median")) +
+  scale_color_manual(values = c("red", "lightblue"), labels = c("Annual Median", "Daily Median")) +
   labs(x = "Day of Year", y = "Median Wind Direction", color = NULL, 
        title = "Interannual Variability of Wind Direction") +
   theme_minimal() +
@@ -89,6 +89,123 @@ ggplot(intan_combd, aes(x = doy, y = med_doy, color = factor(yyyy))) +
   geom_point(alpha = 0.7) +  # Add transparency to lines
   labs(x = "Day of Year", y = "Value", color = "Year") +
   theme_minimal()
+
+#===============================================================================
+#===================Interannual Variability in Average GPP======================
+#===============================================================================
+
+intan_var_doy <- dat_voi%>%
+  group_by(yyyy, doy)%>%
+  summarize(avg_doy_gpp = mean(gpp, na.rm = T))
+intan_var_an <- dat_voi%>%
+  group_by(yyyy)%>%
+  summarize(avg_an_gpp = mean(gpp, na.rm = T))
+intan_combd <- merge(intan_var_an, intan_var_doy)
+intan_combd$day_record_num <- seq_len(nrow(intan_combd))
+intan_combd$date <- as.Date(paste0(intan_combd$yyyy, "-",intan_combd$doy), format = "%Y-%j")
+
+#plotting
+ggplot(intan_combd, aes(x = date)) +
+  geom_line(aes(y = avg_doy_gpp, color = "Daily Avg GPP")) +
+  geom_point(aes(y = avg_an_gpp, color = "Annual Avg GPP")) +
+  scale_color_manual(values = c("red", "lightblue"), labels = c("Annual Average", "Daily Average")) +
+  labs(x = "Year", y = "Average GPP", color = NULL, 
+       title = "Interannual Variability of GPP") +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+#=========================Converting to Z-Scores================================
+#calculate z-scores for gpp
+gpp_zs <- intan_var_gpp
+gpp_zs$rec_avg <- mean(gpp_zs$avg_an_gpp)
+gpp_zs$rec_sd <- sd(gpp_zs$avg_an_gpp)
+gpp_zs$gpp_z_score <- ((gpp_zs$avg_an_gpp - gpp_zs$rec_avg) / gpp_zs$rec_sd)
+
+#plot z-scores
+ggplot(gpp_zs, aes(x = yyyy)) +
+  geom_point(aes(y = gpp_z_score, color = "Annual GPP Z-Score")) +
+  scale_color_manual(values = "navy", labels = c("Annual GPP Z-Score")) +
+  labs(x = "Year", y = "Average GPP", color = NULL, 
+       title = "Interannual Variability of GPP") +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+#===============================================================================
+#==========Relating Interannual Variation in Wind Direction and GPP============
+#===============================================================================
+#calculate z scores for annual median wind direction values
+wd_zs <- intan_var_an
+wd_zs$rec_avg <- mean(wd_zs$med_yr)
+wd_zs$rec_sd <- sd(wd_zs$med_yr)
+wd_zs$wd_z_score <- ((wd_zs$med_yr - wd_zs$rec_avg) / wd_zs$rec_sd)
+
+#plot wind direction z-scores
+ggplot(wd_zs, aes(x = yyyy)) +
+  geom_point(aes(y = wd_z_score, color = "Annual Median Wind Direction Z-Score")) +
+  scale_color_manual(values = "navy", labels = c("Annual Median Wind Direction Z-Score")) +
+  labs(x = "Year", y = "Annual Median Wind Direction Z-Score", color = NULL, 
+       title = "Interannual Variability of Median Wind Direction") +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+#combine zscore gpp and wd dataframes 
+combd_zs <- data.frame(yyyy = gpp_zs$yyyy)
+combd_zs$gpp_zs <- gpp_zs$gpp_z_score
+combd_zs$wd_zs <- wd_zs$wd_z_score
+
+#plot wind direction and gpp z scores
+ggplot(combd_zs, aes(x = wd_zs)) +
+  geom_point(aes(y = gpp_zs)) +
+  scale_color_manual(values = "black") +
+  labs(x = "Annual Wind Direction Z Score", y = "Annual GPP Z Score", color = NULL, 
+       title = "") +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+
+#===============================================================================
+#======================Z Score for GPP Bias by Wind Direction===================
+#===============================================================================
+#create moving window for wind directions
+window_size <- 5
+window_list <- list()
+window_names <- character(length(window_list))
+window_median <- numeric(length(window_list))
+
+for (i in 1:360) {
+  start <- (i - 1) %% 360
+  end <- (start + window_size -1) %%360
+  window_list[[i]] <- c(start, end)
+  
+  window_names[[i]] <- paste(start, "-", end, sep = "") 
+  window_median[[i]] <- median(start, end)
+}  
+
+
+#subset flux data for each window in list
+split_dat <- list()
+for(i in 1: length(window_list)) {
+  start <- window_list[[i]][1]
+  end <-  window_list[[i]][2]
+  if (end > start){
+    sub_dat <- dat_voi%>%
+      filter(wind_dir >= start & wind_dir <= end)
+  } else{
+    sub_dat <- dat_voi%>%
+      filter((wind_dir >= start & wind_dir <= 360) | (wind_dir >= 0 & wind_dir <= end))
+  }
+  split_dat[[i]] <- sub_dat
+}  
+
+#calculate average gpp by wind direction (dataframe in list)
+avg_gpp <- numeric(length(split_dat))
+
+for (i in seq_along(split_dat)) {
+  avg_gpp[i] <- mean(split_dat[[i]]$gpp, na.rm = TRUE)
+}
+
+#convert list to a df
+
 
 #===============================================================================
 #============================Diurnal Variation ==============================
