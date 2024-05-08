@@ -205,6 +205,44 @@ for (i in seq_along(split_dat)) {
 }
 
 #convert list to a df
+#give each a list ID
+split_dat_ID <- lapply(seq_along(split_dat), function(i) {
+  split_dat_ID <- split_dat[[i]]
+  split_dat_ID$WD <- i
+  return(split_dat_ID)
+})
+#merge lists into a dataframe (bind_rows from dplyr)
+combd_WD <- bind_rows(split_dat_ID)
+
+#z scores
+combd_WD$gpp_avg <- mean(combd_WD$gpp, na.rm = T)
+combd_WD$gpp_sd <- sd(combd_WD$gpp, na.rm = T)
+combd_WD$gpp_bias_zs <- ((combd_WD$gpp - combd_WD$gpp_avg) / combd_WD$gpp_sd)
+
+#zs dataframe
+WD_gpp_bias <- combd_WD %>%
+  group_by(WD)%>%
+  summarize(avg_gpp_zs = mean(gpp_bias_zs, na.rm = T))
+
+#==========Interannual Variability of WD expressed as WD GPP Bias===============
+
+#intan_var_an from line 67; round wind directions to whole numbers
+intan_var_an$med_yr <- round(intan_var_an$med_yr)
+names(intan_var_an)[which(names(intan_var_an) == "med_yr")] <- "WD"
+combd_bias <- merge(intan_var_an, WD_gpp_bias)
+
+#plot IA WD z score with year
+ggplot(combd_bias, aes(x = yyyy)) +
+  geom_point(aes(y = avg_gpp_zs)) +
+  scale_color_manual(values = "black") +
+  labs(x = "Year", y = "Wind Direction GPP Z Score", color = NULL, 
+       title = "Annual GPP Z Score based on Wind Direction GPP Bias") +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+
+
+
 
 
 #===============================================================================
