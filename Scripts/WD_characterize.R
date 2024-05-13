@@ -242,27 +242,3 @@ ggplot(combd_bias, aes(x = yyyy)) +
 
 
 
-
-
-
-#===============================================================================
-#============================Diurnal Variation ==============================
-#===============================================================================
-
-NW_dat_ffp_HH <- NW_dat_ffp%>%
-  group_by(HH_UTC, MM)%>%
-  summarize(gpp_HH_avg = mean(gpp, na.rm = T))
-NW_dat_ffp_HH$dir <- "NW"
-SE_dat_ffp_HH <- SE_dat_ffp%>%
-  group_by(HH_UTC, MM)%>%
-  summarize(gpp_HH_avg = mean(gpp, na.rm = T)) 
-SE_dat_ffp_HH$dir <- "SE"
-HHcombd_dat <- rbind(NW_dat_ffp_HH, SE_dat_ffp_HH)
-  
-ggplot(HHcomd_dat)
-#Annual Variation
-
-#GPP, NEE, and LE by WD
-
-
-#table of average driver values (winter, pre, post)- PPFD, RH, TA, VPD, WS, RECO, GPP, NEE
