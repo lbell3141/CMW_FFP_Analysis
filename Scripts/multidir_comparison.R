@@ -162,15 +162,23 @@ avg_gpp <- numeric(length(split_dat))
 for (i in seq_along(split_dat)) {
   avg_gpp[i] <- mean(split_dat[[i]]$gpp, na.rm = TRUE)
 }
+#calculate standard error for each direction
+se_gpp <- sapply(split_dat, function(x) {
+  mean(x$gpp, na.rm = TRUE) / sqrt(length(x$gpp))
+})
 
-#plot midpoint and integrated gpp
-plot_frame <- data.frame(window_median, avg_gpp)
+#make new df for easier plotting
+plot_frame <- data.frame(window_median, avg_gpp, se_gpp)
 
-plot <- ggplot(data = plot_frame, aes(window_median, avg_gpp))+
+#plot midpoint and average gpp; use se to make y ranges
+plot <- ggplot(data = plot_frame, aes(window_median, avg_gpp, ymin = avg_gpp - se_gpp, ymax = avg_gpp + se_gpp)) +
   geom_point() + 
-  labs(x = "Wind Direction Window Median", y = "Average GPP per Wind Direction", title = "Wind Direction Comparison")
+  geom_errorbar(width = 0.2) + 
+  labs(x = "Wind Direction Window Median", y = "Average GPP per Wind Direction", title = "Productivity per Wind Direction with Standard Error")
 
 plot
+
+
 
 #=================================WD frequency==================================
 num_obs <- numeric(length(split_dat))
