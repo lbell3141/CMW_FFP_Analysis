@@ -201,4 +201,24 @@ plot <- ggplot(data = plot_frame, aes(avg_cover_val, avg_gpp, ymin = avg_gpp - s
 
 plot
 
+#=====checking with WS==========================================================
+#calculate average gpp by wind direction (dataframe in list)
+avg_WS <- numeric(length(split_dat))
+for (i in seq_along(split_dat)) {
+  avg_WS[i] <- mean(split_dat[[i]]$wind_sp, na.rm = TRUE)
+}
 
+#calculate standard error for each direction
+se_WS <- sapply(split_dat, function(x) {
+  mean(x$wind_sp, na.rm = TRUE) / sqrt(length(x$wind_sp))
+})
+
+#make new df by combining both RAP and GPP values
+plot_frame <- cbind(plot_frame, avg_WS, se_WS)
+
+#plot: GPP and % cover
+plot <- ggplot(data = plot_frame, aes(avg_WS, avg_gpp)) +
+  geom_point() + 
+  labs(x = "Avgerage Wind Speed", y = "Average GPP (WD:170-270)", title = "GPP/Wind Speed")
+
+plot
