@@ -216,9 +216,25 @@ se_WS <- sapply(split_dat, function(x) {
 #make new df by combining both RAP and GPP values
 plot_frame <- cbind(plot_frame, avg_WS, se_WS)
 
-#plot: GPP and % cover
+#plot: GPP and WS
 plot <- ggplot(data = plot_frame, aes(avg_WS, avg_gpp)) +
   geom_point() + 
   labs(x = "Avgerage Wind Speed", y = "Average GPP (WD:170-270)", title = "GPP/Wind Speed")
+
+plot
+
+#=====and latent heat!==========================================================
+#calculate average gpp by wind direction (dataframe in list)
+avg_le <- numeric(length(split_dat))
+for (i in seq_along(split_dat)) {
+  avg_le[i] <- mean(split_dat[[i]]$le, na.rm = TRUE)
+}
+#make new df by combining both RAP and GPP values
+plot_frame <- cbind(plot_frame, avg_le)
+
+#plot: GPP and % cover
+plot <- ggplot(data = plot_frame, aes(avg_gpp, avg_le)) +
+  geom_point() + 
+  labs(x = "Average GPP (WD:170-270)", y = "Average LE", title = "GPP/Latent Heat")
 
 plot
