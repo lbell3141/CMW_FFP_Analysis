@@ -4,6 +4,8 @@ library(lubridate)
 library(dplyr)
 library(plantecophys)
 library(ggplot2)
+library(report)
+library(effectsize)
 
 #Load data; set parameters
 dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv",  na.strings = "-9999", header = TRUE, sep = ",", skip = 2)
@@ -52,10 +54,10 @@ dat_voi = dat_file %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)%>%
   filter(lag(precip) == 0, lead(precip) == 0)%>%
   filter(precip == 0) 
-dat_ffp$L = as.numeric(dat_ffp$L)
-dat_ffp$sigma_v = as.numeric(dat_ffp$sigma_v)
-dat_ffp$u_star = as.numeric(dat_ffp$u_star)
-dat_ffp$wind_dir = as.numeric(dat_ffp$wind_dir)
+dat_voi$L = as.numeric(dat_voi$L)
+dat_voi$sigma_v = as.numeric(dat_voi$sigma_v)
+dat_voi$u_star = as.numeric(dat_voi$u_star)
+dat_voi$wind_dir = as.numeric(dat_voi$wind_dir)
 
 #===============================================================================
 #========================================
@@ -95,3 +97,39 @@ plots <- lapply(voi, function(obj) {
     stat_summary(fun = "mean", geom = "point", shape = 8, size = 2, color = "red")
 })
 plots
+
+#===============================================================================
+#==============================ANOVA Tests======================================
+#===============================================================================
+#define variables to loop through and make dataframe for results
+voi <- c("ppfd", "rel_h", "temp_atmos", "VPD", "wind_sp", "le", "swc")
+anova_df <- data.frame(Variable = character(),
+                       F_value = numeric(),
+                       P_value = numeric(),
+                       Eta_Squared = numeric(),
+                       stringsAsFactors = FALSE
+                       )
+#loop through vars and store results in df
+for (i in voi){
+  formula <- as.formula(paste(i, "~ WD"))
+  res_aov <- aov(formula, data = combd_WD)
+  
+  # Extract F-value and p-value from ANOVA summary
+  summary_res <- summary(res_aov)
+  F_value <- summary_res[[1]][["F value"]][1]
+  P_value <- summary_res[[1]][["Pr(>F)"]][1]
+  
+  # Calculate Eta Squared
+  eta_squared_res <- eta_squared(res_aov)
+  Eta_Squared <- eta_squared_res$Eta2[1]
+  
+  # Append the results to the data frame
+  anova_df <- rbind(anova_df, data.frame(
+    Variable = i,
+    F_value = F_value,
+    P_value = P_value,
+    Eta_Squared = Eta_Squared,
+    stringsAsFactors = FALSE
+  ))
+}
+
