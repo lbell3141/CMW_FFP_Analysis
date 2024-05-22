@@ -55,7 +55,7 @@ dat_voi = dat_file %>%
   filter(lag(precip) == 0, lead(precip) == 0)%>%
   filter(precip == 0) 
 dat_voi$L = as.numeric(dat_voi$L)
-dat_voi$sigma_v = as.numeric(dat_voi$sigma_v)
+#dat_voi$sigma_v = as.numeric(dat_voi$sigma_v)
 dat_voi$u_star = as.numeric(dat_voi$u_star)
 dat_voi$wind_dir = as.numeric(dat_voi$wind_dir)
 

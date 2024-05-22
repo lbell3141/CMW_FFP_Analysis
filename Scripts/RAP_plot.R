@@ -17,6 +17,10 @@ pathtoFFPoutline <- "./Data/RAP/2017_FFP_Outline/twi_ffp_sec.shp"
 rast_files <- list.files(pathtoRAPrasts, pattern = "RAP_VegCover_\\d{4}\\.tif$", full.names = TRUE)
 rast_names <- list.files(pathtoRAPrasts, pattern = "RAP_VegCover_\\d{4}\\.tif$", full.names = FALSE)
 
+#===============================================================================
+#==================1. Veg cover plot: prop woody to herbaceous==================
+#===============================================================================
+
 #apply names to rasters
 rast_list <- lapply(rast_files, rast)
 names(rast_list) <- rast_names
@@ -185,7 +189,7 @@ plot_frame <- cbind(avg_cover_df, plot_frame)
 #plot: WD, GPP, and % cover
 plot <- ggplot(data = plot_frame, aes(x = shapefile, y = avg_gpp, size = avg_cover_val, ymin = avg_gpp - se_gpp, ymax = avg_gpp + se_gpp)) +
   geom_point() + 
-  geom_errorbar(width = 0.2) + 
+  geom_errorbar(width = 0.2, size = 0.5) + 
   scale_size_continuous(name = "Average % Woody Cover") + 
   labs(x = "Wind Direction Window", y = "Average GPP", title = "Productivity per Wind Direction and Woody Cover") +
   theme_minimal() +
@@ -224,7 +228,7 @@ plot <- ggplot(data = plot_frame, aes(avg_WS, avg_gpp)) +
 plot
 
 #=====and latent heat!==========================================================
-#calculate average gpp by wind direction (dataframe in list)
+#calculate average le by wind direction (dataframe in list)
 avg_le <- numeric(length(split_dat))
 for (i in seq_along(split_dat)) {
   avg_le[i] <- mean(split_dat[[i]]$le, na.rm = TRUE)
@@ -238,3 +242,4 @@ plot <- ggplot(data = plot_frame, aes(avg_gpp, avg_le)) +
   labs(x = "Average GPP (WD:170-270)", y = "Average LE", title = "GPP/Latent Heat")
 
 plot
+
