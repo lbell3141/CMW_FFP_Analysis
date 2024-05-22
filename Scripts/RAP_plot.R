@@ -6,6 +6,7 @@ library(lubridate)
 library(dplyr)
 library(plantecophys)
 library(ggplot2)
+library(ggbreak)
 library(terra)
 library(viridis)
 library(sf)
@@ -243,3 +244,43 @@ plot <- ggplot(data = plot_frame, aes(avg_gpp, avg_le)) +
 
 plot
 
+
+#====================boxplot curve for WD, cover, and gpp=======================
+
+deg_int <- seq(0, 360, by = 10)
+split_dat <- split(dat_ffp, cut(dat_ffp$wind_dir, deg_int, include.lowest = TRUE, labels = FALSE))
+
+dir_names <- paste0(deg_int[-length(deg_int)], "-", deg_int[-1])
+names(split_dat) <- dir_names
+
+#convert list to a df
+#give each a list ID
+split_dat_ID <- lapply(seq_along(split_dat), function(i) {
+  split_dat_ID <- split_dat[[i]]
+  split_dat_ID$WD <- dir_names[i]
+  return(split_dat_ID)
+})
+#merge lists into a dataframe 
+combd_WD <- bind_rows(split_dat_ID)
+
+avg_cover_df <- avg_cover_df %>% rename(WD = shapefile)
+plot_frame <- merge(combd_WD, avg_cover_df, by = "WD")
+
+plot_frame <- plot_frame %>%
+  group_by(WD)%>%
+  mutate(avg_gpp = mean(gpp, na.rm = T))
+  
+plot_frame <- plot_frame %>%
+  group_by(WD)%>%
+  mutate(se_gpp = sd(gpp, na.rm = T))
+
+#boxplot
+plot <- ggplot(data = plot_frame, aes(x = WD, y = gpp)) +
+  geom_boxplot() +
+  scale_y_break(c(16, 30)) +  
+  stat_summary(fun = mean, aes(size = avg_cover_val), geom = "point", shape = 8, color = "red") + 
+  scale_size_continuous(name = "Average % Woody Cover") +
+  labs(x = "Wind Direction Window", y = "Average GPP", title = "Productivity per Wind Direction and Woody Cover") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+plot
