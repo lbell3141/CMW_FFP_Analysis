@@ -6,6 +6,8 @@ library(plantecophys)
 library(ggplot2)
 library(report)
 library(effectsize)
+library(multcomp)
+library(gridExtra)
 
 #Load data; set parameters
 dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv",  na.strings = "-9999", header = TRUE, sep = ",", skip = 2)
@@ -81,7 +83,7 @@ combd_WD <- bind_rows(split_dat_ID)
 
 #create boxplots
 #define driver variables
-voi <- c("ppfd", "rel_h", "temp_atmos", "VPD", "wind_sp", "le", "swc")
+voi <- c("ppfd", "VPD", "wind_sp", "le", "swc", "gpp")
 
 #loop through each variable in voi and plot: define axes, unquote voi, define type of plot, adjust plot visuals
 #make WD a factor so it increased correctly as levels
@@ -90,14 +92,15 @@ combd_WD$WD <- factor(combd_WD$WD, levels = dir_names)
 plots <- lapply(voi, function(obj) {
     ggplot(data = combd_WD, aes(x = WD, y = !!sym(obj))) +
     geom_boxplot() +
-    labs(title = paste("Boxplot of", obj, "by Wind Direction"),
-         x = "Wind Direction", y = obj) +
+    labs(
+      #title = paste("Boxplot of", obj, "by Wind Direction"),
+         x = "", y = obj) +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     stat_summary(fun = "mean", geom = "point", shape = 8, size = 2, color = "red")
 })
 plots
-
+do.call(grid.arrange, c(plots, ncol = 1))
 #===============================================================================
 #==============================ANOVA Tests======================================
 #===============================================================================
@@ -132,4 +135,37 @@ for (i in voi){
     stringsAsFactors = FALSE
   ))
 }
+
+#post hoc Tukey HSD test
+post_hoc_results <- list()
+for (i in voi){
+  # Create the formula for ANOVA
+  formula <- as.formula(paste(i, "~ WD"))
+  
+  # Perform ANOVA
+  res_aov <- aov(formula, data = combd_WD)
+  
+  # Perform post hoc Tukey HSD test
+  post_test <- glht(res_aov, linfct = mcp(WD = "Tukey"))
+  
+  # Store the post hoc test results
+  post_hoc_results[[i]] <- summary(post_test)
+}
+
+
+summary(post_test)
+
+#===============================================================================
+#==============================Multi-var ANOVA==================================
+#===============================================================================
+res.manova <- manova(cbind(ppfd, VPD, swc) ~ WD, data = combd_WD)
+summary(res.manova)
+report(res.manova)
+
+
+
+
+
+
+
 
