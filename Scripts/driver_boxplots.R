@@ -62,7 +62,7 @@ dat_voi$u_star = as.numeric(dat_voi$u_star)
 dat_voi$wind_dir = as.numeric(dat_voi$wind_dir)
 
 #===============================================================================
-#========================================
+#===================GPP Driver Box Plots (Indv and Stacked)=====================
 #===============================================================================
 
 deg_int <- seq(0, 360, by = 10)
@@ -136,24 +136,29 @@ for (i in voi){
   ))
 }
 
+voi <- c("ppfd", "VPD", "wind_sp", "le", "swc")
+
 #post hoc Tukey HSD test
 post_hoc_results <- list()
 for (i in voi){
-  # Create the formula for ANOVA
-  formula <- as.formula(paste(i, "~ WD"))
-  
-  # Perform ANOVA
-  res_aov <- aov(formula, data = combd_WD)
-  
-  # Perform post hoc Tukey HSD test
+  #post hoc Tukey test
   post_test <- glht(res_aov, linfct = mcp(WD = "Tukey"))
   
-  # Store the post hoc test results
+  #results
   post_hoc_results[[i]] <- summary(post_test)
 }
 
 
-summary(post_test)
+res_aov <- aov(VPD ~ WD, data = combd_WD)
+
+# Perform the post hoc Tukey HSD test for one variable
+res_aov <- aov(VPD ~ WD, data = combd_WD)
+
+# Perform the Tukey HSD post hoc test
+tukey_results <- TukeyHSD(res_aov)
+
+# Print the results
+plot(tukey_results)
 
 #===============================================================================
 #==============================Multi-var ANOVA==================================
