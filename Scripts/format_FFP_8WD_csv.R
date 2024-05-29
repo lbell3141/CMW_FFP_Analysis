@@ -47,18 +47,8 @@ dat_ffp$sigma_v = as.numeric(dat_ffp$sigma_v)
 dat_ffp$u_star = as.numeric(dat_ffp$u_star)
 dat_ffp$wind_dir = as.numeric(dat_ffp$wind_dir)
 
-#===============================================================================
-#======================Loop through directions for csv outputs==================
-#===============================================================================
 
-wdsub_dat_ffp <- dat_ffp%>%
-  filter(wind_dir %in% 170:270)
 
-deg_int <- seq(170, 270, by = 10)
-split_dat <- split(wdsub_dat_ffp, cut(wdsub_dat_ffp$wind_dir, deg_int, include.lowest = TRUE, labels = FALSE))
-
-dir_names <- c("170-180","180-190","190-200", "200-210", "210-220", "220-230", "230-240", "240-250", "250-260", "260-270") 
-names(split_dat) <- dir_names
 
 for (i in seq_along(split_dat)){
   filename <- paste0(dir_names[i], ".csv")
