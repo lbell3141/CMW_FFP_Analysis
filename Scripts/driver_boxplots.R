@@ -148,18 +148,17 @@ for (i in voi){
   post_hoc_results[[i]] <- summary(post_test)
 }
 
-
+#make anova model
 res_aov <- aov(VPD ~ WD, data = combd_WD)
+#perform post hoc test
+tukey_results <- TukeyHSD(res_aov, conf.level = 0.95)
+#plot results? doesn't seem v helpful
+plot(TukeyHSD(res_aov, conf.level = 0.95), las = 2)
 
-# Perform the post hoc Tukey HSD test for one variable
-res_aov <- aov(VPD ~ WD, data = combd_WD)
-
-# Perform the Tukey HSD post hoc test
-tukey_results <- TukeyHSD(res_aov)
-
-# Print the results
-plot(tukey_results)
-
+#make into df and filter for values of sig dif
+tukey_df <- as.data.frame(tukey_results$WD)
+significant_pairs <- tukey_df[tukey_df$`p adj` < 0.05, ]
+#plot(significant_pairs$diff)
 #===============================================================================
 #==============================Multi-var ANOVA==================================
 #===============================================================================
