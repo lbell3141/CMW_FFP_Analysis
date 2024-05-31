@@ -2,7 +2,7 @@
 library(lubridate)
 library(dplyr)
 
-
+csvtestoutput = "./single_sv_test.csv"
 dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv",  na.strings = "-9999", header = TRUE, sep = ",", skip = 2)
 dat_file$TIMESTAMP_START <- ymd_hm(as.character(dat_file$TIMESTAMP_START))
 
@@ -52,6 +52,7 @@ split_dat <- split(wdsub_dat_ffp, cut(wdsub_dat_ffp$WD_1_1_1, deg_int, include.l
 dir_names <- c("170-180","180-190","190-200", "200-210", "210-220", "220-230", "230-240", "240-250", "250-260", "260-270") 
 names(split_dat) <- dir_names
 
+test_dat <- split_dat
 
 #separate sigma_v calculation using function from sigma_v_calc.R
 sigma_vs <- vector("list", length(split_dat))
@@ -68,6 +69,7 @@ for (i in seq_along(split_dat)){
   sigma_vs[[i]]$u_bar_x =  split_dat[[i]]$WS_1_1_1 * sin(sigma_vs[[i]]$WD_rad - pi)
   sigma_vs[[i]]$u_bar_y =  split_dat[[i]]$WS_1_1_1 * cos(sigma_vs[[i]]$WD_rad - pi)
   sigma_vs[[i]]$theta_v_bar = atan2(sigma_vs[[i]]$u_bar_x, sigma_vs[[i]]$u_bar_y) + pi
+  
   sigma_vs[[i]]$var_sigma_v = (split_dat[[i]]$WS_1_1_1 * sin(WD_means[[i]]$avg_WD_rad - sigma_vs[[i]]$WD_rad))^2
   sigma_vs[[i]]$sigma_v = sqrt(sigma_vs[[i]]$var_sigma_v)
   
@@ -88,3 +90,30 @@ for (i in seq_along(split_dat)){
   filename <- paste0(dir_names[i], ".csv")
   write.csv(split_dat[[i]], file = filename, row.names = F)
 }
+
+
+#========================single val sig_v=======================================
+#convert test_dat WD from degrees to radians
+for (i in seq_along(test_dat)){
+  test_dat[[i]]$WD_1_1_1 = test_dat[[i]]$WD_1_1_1 * pi / 180
+}
+
+for (i in seq_along(test_dat)){
+  sigma_v <- (1/(nrow(test_dat[[i]]) - 1)) * sum(test_dat[[i]]$WS_1_1_1 * sin(WD_means[[i]]$avg_WD_rad - test_dat[[i]]$WD_1_1_1))
+  test_dat[[i]]$sigma_v <- sign(sigma_v) * sqrt(abs(sigma_v))
+}
+
+unique(test_dat[[1]]$sigma_v)
+
+for (i in seq_along(test_dat)) {
+  test_dat[[i]]$WS_1_1_1 <- NULL
+  #convert WD in radians back to degrees and rename
+  test_dat[[i]]$WD_1_1_1 <- test_dat[[i]]$WD_1_1_1 * 180 / pi
+  colnames(test_dat[[i]])[colnames(test_dat[[i]]) == "WD_1_1_1"] <- "wind_dir"
+}
+
+#test_dat[[1]]$sigma_v <- 0.2
+
+#write csvs 
+write.csv(test_dat[[1]], file = "single_sv_test.csv", row.names = FALSE)
+
