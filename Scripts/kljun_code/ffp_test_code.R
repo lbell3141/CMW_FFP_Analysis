@@ -31,6 +31,38 @@ FFP <- calc_footprint_FFP_climatology(dat_voi_test$zm,
 #for (i in 1:8) lines(FFP$xr[[i]], FFP$yr[[i]], type="l", col="red") 
 
 #surf3D(FFP$x_2d, FFP$y_2d,FFP$fclim_2d) 
+#===============================================================================
+#=========lateral velocity fluctuation (sigma_v) sensitivity test===============
+#===============================================================================
+#for a 10 degree directional window, what is the sensitivity of the footprint prediction to (reasonable) changes in the value of sigma_v
+#test dist of sigma_v
+
+deg_int <- seq(0, 360, by = 10)
+split_dat <- split(dat_voi, cut(dat_voi$wind_dir, deg_int, include.lowest = TRUE, labels = FALSE))
+
+dir_names <- paste0(deg_int[-length(deg_int)], "-", deg_int[-1])
+names(split_dat) <- dir_names
+
+test_df <- split_dat[[20]]
+
+test_dist <- abs(rnorm(nrow(test_df), mean = 0.2, sd = 0.2))
+test_dist <- abs(rnorm(nrow(test_df), mean = 0.5, sd = 0.2))
+test_dist <- abs(rnorm(nrow(test_df), mean = 0.8, sd = 0.2))
+test_dist <- abs(rnorm(nrow(test_df), mean = 1.1, sd = 0.2))
+test_dist <- abs(rnorm(nrow(test_df), mean = 1.4, sd = 0.2))
+
+FFP <- calc_footprint_FFP_climatology(test_df$zm, 
+                                      test_df$zo, 
+                                      test_df$u_mean, 
+                                      test_df$h, 
+                                      test_df$L, 
+                                      test_dist,
+                                      test_df$u_star,
+                                      test_df$wind_dir, 
+                                      fig = 1,
+                                      domain = c(-250,250,-250,250), 
+                                      r = seq(0,90, by = 10))
+
 
 #===============================================================================
 #======================contour extents to shapefiles(?)=========================
