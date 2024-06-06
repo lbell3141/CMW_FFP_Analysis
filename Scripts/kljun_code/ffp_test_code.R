@@ -2,8 +2,7 @@ library(fields)
 library(EBImage)
 install.packages("./spatialfil_0.15.tar.gz", repos = NULL, type = "source")
 library(plot3D)
-library(geos)
-library(terra)
+library(sf)
 
 FFP <- calc_footprint_FFP(7, NaN, 1.47091, 1000, -3.543327409, 0.018049909, 0.257615)
 plot(FFP$x_ci,FFP$f_ci, type="l") 
@@ -119,18 +118,17 @@ line_list <- list()
 #make lines from FFP output coords
 #length of x depends on optional r argument in the climatology function
 for (i in 1:length(FFP$xr)) {
-  #combine list values to make df of ordered pairs
-  combined_df <- data.frame(x = FFP$xr[[i]], y = FFP$yr[[i]])
-  xy_df <- data.frame(x = combined_df[[1]], y = combined_df[[2]], line_id = i)
-  #store in list
-  coord_pair_list[[i]] <- xy_df
-}
-
-#(gives error bc 100% contour list in NA)
-for (i in 1:length(coord_pair_list)) {
-  line_list[[i]] <- geos_make_linestring(coord_pair_list[[i]]$x, coord_pair_list[[i]]$y, z = NA_real_)
-}
+  #combine list values to make df of ordered pairs and store in list
+  coord_pair_list[[i]] <- data.frame(x = FFP$xr[[i]], y = FFP$yr[[i]])
+  }
 
 #georef: make (0,0) equal to tower coords. pixels in meters
 
+#convert points to lines using function
+lines_sf <- st_sfc(lapply(coord_pair_list, st_linestring))
+
+#set crs (EPSG:4326 is the same as the RAP file)
+lines_sf <- lapply(lines_sf, function(line) {
+  st_set_crs(line, 4326)
+})
 
