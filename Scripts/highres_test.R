@@ -110,7 +110,7 @@ dat_file$TIMESTAMP_START <- ymd_hm(as.character(dat_file$TIMESTAMP_START))
 dat_file$VPD = RHtoVPD(dat_file$RH_1_1_1, dat_file$TA_1_1_1, dat_file$PA)
 
 meas_h <- 14
-d <- (2/3) * meas_h
+d <- 7
 bound_h <- 1000
 
 dat_voi = dat_file %>%
@@ -121,7 +121,7 @@ dat_voi = dat_file %>%
     day = day(TIMESTAMP_START),
     HH_UTC = hour(TIMESTAMP_START),
     MM = minute(TIMESTAMP_START),
-    zm = meas_h,
+    zm = meas_h - d,
     zo = NaN,
     h = 1000,
     d = d, 

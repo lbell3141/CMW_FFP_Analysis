@@ -27,8 +27,8 @@ FFP <- calc_footprint_FFP_climatology(dat_voi_test$zm,
                                       domain = c(-250,250,-250,250), 
                                       r = seq(0,90, by = 10))
 
-#image.plot(FFP$x_2d[1,], FFP$y_2d[,1], FFP$fclim_2d) 
-#for (i in 1:8) lines(FFP$xr[[i]], FFP$yr[[i]], type="l", col="red") 
+image.plot(FFP_B$x_2d[1,], FFP_B$y_2d[,1], FFP_B$fclim_2d) 
+for (i in 1:8) lines(FFP_B$xr[[i]], FFP_B$yr[[i]], type="l", col="red") 
 
 #surf3D(FFP$x_2d, FFP$y_2d,FFP$fclim_2d) 
 #===============================================================================
@@ -45,25 +45,68 @@ names(split_dat) <- dir_names
 
 test_df <- split_dat[[20]]
 
-test_dist <- abs(rnorm(nrow(test_df), mean = 0.2, sd = 0.2))
-test_dist <- abs(rnorm(nrow(test_df), mean = 0.5, sd = 0.2))
-test_dist <- abs(rnorm(nrow(test_df), mean = 0.8, sd = 0.2))
-test_dist <- abs(rnorm(nrow(test_df), mean = 1.1, sd = 0.2))
-test_dist <- abs(rnorm(nrow(test_df), mean = 1.4, sd = 0.2))
+test_dist_A <- abs(rnorm(nrow(test_df), mean = 0.2, sd = 0.2))
+test_dist_B <- abs(rnorm(nrow(test_df), mean = 0.5, sd = 0.2))
+test_dist_C <- abs(rnorm(nrow(test_df), mean = 0.8, sd = 0.2))
+test_dist_D <- abs(rnorm(nrow(test_df), mean = 1.1, sd = 0.2))
+test_dist_E<- abs(rnorm(nrow(test_df), mean = 1.4, sd = 0.2))
 
-FFP <- calc_footprint_FFP_climatology(test_df$zm, 
+FFP_A <- calc_footprint_FFP_climatology(test_df$zm, 
                                       test_df$zo, 
                                       test_df$u_mean, 
                                       test_df$h, 
                                       test_df$L, 
-                                      test_dist,
+                                      test_dist_A,
                                       test_df$u_star,
                                       test_df$wind_dir, 
                                       fig = 1,
                                       domain = c(-250,250,-250,250), 
                                       r = seq(0,90, by = 10))
 
-
+FFP_B <- calc_footprint_FFP_climatology(test_df$zm, 
+                                        test_df$zo, 
+                                        test_df$u_mean, 
+                                        test_df$h, 
+                                        test_df$L, 
+                                        test_dist_B,
+                                        test_df$u_star,
+                                        test_df$wind_dir, 
+                                        fig = 1,
+                                        domain = c(-250,250,-250,250), 
+                                        r = seq(0,90, by = 10))
+FFP_C <- calc_footprint_FFP_climatology(test_df$zm, 
+                                        test_df$zo, 
+                                        test_df$u_mean, 
+                                        test_df$h, 
+                                        test_df$L, 
+                                        test_dist_C,
+                                        test_df$u_star,
+                                        test_df$wind_dir, 
+                                        fig = 1,
+                                        domain = c(-250,250,-250,250), 
+                                        r = seq(0,90, by = 10))
+FFP_D <- calc_footprint_FFP_climatology(test_df$zm, 
+                                        test_df$zo, 
+                                        test_df$u_mean, 
+                                        test_df$h, 
+                                        test_df$L, 
+                                        test_dist_D,
+                                        test_df$u_star,
+                                        test_df$wind_dir, 
+                                        fig = 1,
+                                        domain = c(-250,250,-250,250), 
+                                        r = seq(0,90, by = 10))
+FFP_E <- calc_footprint_FFP_climatology(test_df$zm, 
+                                        test_df$zo, 
+                                        test_df$u_mean, 
+                                        test_df$h, 
+                                        test_df$L, 
+                                        test_dist_E,
+                                        test_df$u_star,
+                                        test_df$wind_dir, 
+                                        fig = 1,
+                                        domain = c(-250,250,-250,250), 
+                                        r = seq(0,90, by = 10))
 #===============================================================================
 #======================contour extents to shapefiles(?)=========================
 #===============================================================================
