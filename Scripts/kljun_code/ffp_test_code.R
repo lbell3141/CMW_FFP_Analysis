@@ -5,7 +5,7 @@ library(plot3D)
 library(geos)
 library(terra)
 
-FFP <- calc_footprint_FFP(14, NaN, 1.47091, 1000, -3.543327409, 0.018049909, 0.257615)
+FFP <- calc_footprint_FFP(7, NaN, 1.47091, 1000, -3.543327409, 0.018049909, 0.257615)
 plot(FFP$x_ci,FFP$f_ci, type="l") 
 
 #climatology====================================================================
