@@ -19,13 +19,17 @@
 #c = 1.462
 #d = 0.136 
 
+test <- mean(dat_voi$u_star, na.rm = T)
+
+
+
 R = 0.9
 c = 1.462
 d = 0.136
 z_m = 7
 h = 1000
 u_bar = 1.47091
-u_star =  0.8
+u_star =  test
 k = 0.4
 
 #distance from the tower that the R% contour samples
