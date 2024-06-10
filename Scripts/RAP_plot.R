@@ -50,6 +50,9 @@ ffp <- vect(pathtoFFPoutline)
 extent <- c(-110.18, -110.1755, 31.6615, 31.666)
 dif_rast <- crop(dif_rast, extent)
 
+#save dif rast
+#terra::writeRaster(dif_rast, filename = "./Data/RAP/dif_rast.tif", filetype = "GTiff", overwrite = TRUE)
+
 #function for radially segmented lines
 #dividing the radians of a circle 
 #set line length 

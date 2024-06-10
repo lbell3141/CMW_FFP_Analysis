@@ -26,8 +26,8 @@ FFP <- calc_footprint_FFP_climatology(dat_voi_test$zm,
                                       domain = c(-250,250,-250,250), 
                                       r = seq(0,90, by = 10))
 
-image.plot(FFP_B$x_2d[1,], FFP_B$y_2d[,1], FFP_B$fclim_2d) 
-for (i in 1:8) lines(FFP_B$xr[[i]], FFP_B$yr[[i]], type="l", col="red") 
+image.plot(FFP$x_2d[1,], FFP$y_2d[,1], FFP$fclim_2d) 
+for (i in 1:8) lines(FFP$xr[[i]], FFP$yr[[i]], type="l", col="red") 
 
 #surf3D(FFP$x_2d, FFP$y_2d,FFP$fclim_2d) 
 #===============================================================================
@@ -114,7 +114,7 @@ FFP_E <- calc_footprint_FFP_climatology(test_df$zm,
 
 #list for line vectors
 coord_pair_list <- list()
-line_list <- list()
+
 #make lines from FFP output coords
 #length of x depends on optional r argument in the climatology function
 for (i in 1:length(FFP$xr)) {
@@ -124,11 +124,25 @@ for (i in 1:length(FFP$xr)) {
 
 #georef: make (0,0) equal to tower coords. pixels in meters
 
-#convert points to lines using function
-lines_sf <- st_sfc(lapply(coord_pair_list, st_linestring))
-
-#set crs (EPSG:4326 is the same as the RAP file)
-lines_sf <- lapply(lines_sf, function(line) {
-  st_set_crs(line, 4326)
+#non numeric error keeps coming up. make df values numeric w function
+coord_pair_list <- lapply(seq_along(FFP$xr), function(i) {
+  data.frame(x = as.numeric(FFP$xr[[i]]), y = as.numeric(FFP$yr[[i]]))
 })
+
+#na error (topological? or from excluded contours?). remove nas from dfs w function
+coord_pair_list <- lapply(coord_pair_list, function(df) {
+  na.omit(df)
+})
+
+#error due to df not being a matirx. convert df to matix and then apply function from sf to convert points to lines
+#set crs (same as RAP) with st_sfc at the same time
+lines_list <- st_sfc(lapply(coord_pair_list, function(coords) {
+  st_linestring(as.matrix(coords))
+}), crs = 4326)
+
+test <- plot(lines_list[[3]])
+
+#loading RAP data
+pathtoRAPrast <- "./Data/RAP/dif_rast.tif"
+rast <- rast(pathtoRAPrast)
 

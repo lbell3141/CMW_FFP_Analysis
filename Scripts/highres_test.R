@@ -9,22 +9,24 @@ library(plantecophys)
 
 
 #set data paths
-pathtoHFdata <- "./Data/sigma_tests/CM_01192022.txt"
+pathtoHFdata <- "./Data/High_Freq_Data/Jan2019.txt"
 pathtoHHdata <- "./Data/AMF_US-CMW_BASE_HH_2-5.csv"
-
 
 #===============================================================================
 #=====================Aggregate 10Hz to 3s observations=========================
 #===============================================================================
 #load high frequency data (10Hz obs)
-hf_data <- read.table(pathtoHFdata, header = T)
-hf_data$Date <- ymd(hf_data$Date)
+hf_data <- read.table(pathtoHFdata, header = TRUE, sep = "\t")
+#format timestamp
+hf_data$TimeStamp <- ymd_hms(hf_data$TimeStamp)
 #split into groups of 30 observations 
 #add row number
 hf_data <- hf_data %>%
   mutate(row_ID = row_number())
-
 #adding dates by brute force bc something is wonky when I do it in the pipe w the rest of the values
+#new column for dates in order to keep hm info in timestamp column
+hf_data <- hf_data %>%
+  mutate(Date = as.Date(TimeStamp))
 group_date <- hf_data %>%
   # "%/% rounds down to the whole number in the quotient
   group_by(group = (row_ID - 1) %/% 30) %>%
@@ -34,11 +36,11 @@ group_date <- hf_data %>%
 ag_3s_df <- hf_data %>%
   group_by(group = (row_ID - 1) %/% 30) %>%
   summarise(
-    Date = group_date$Date[group[1] + 3],  # Adjusted to start from group 3
-    Time = max(Time, na.rm = TRUE),
+    Date = first(Date),
+    Time = max(TimeStamp, na.rm = TRUE),
     Ux = mean(Ux, na.rm = TRUE),
     Uy = mean(Uy, na.rm = TRUE),
-    Uz = mean(Uz, na.rm = TRUE)
+    Uz = mean(uZ, na.rm = TRUE)
   )
 
 #===============================================================================
