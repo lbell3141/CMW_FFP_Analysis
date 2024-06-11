@@ -5,6 +5,8 @@ library(plot3D)
 library(sf)
 library(terra)
 
+pathtoRAPrast <- "./Data/RAP/dif_rast.tif"
+
 #1D FFP====================================================================
 
 FFP <- calc_footprint_FFP(7, NaN, 1.47091, 1000, -3.543327409, 0.018049909, 0.257615)
@@ -12,9 +14,9 @@ plot(FFP$x_ci,FFP$f_ci, type="l")
 
 #climatology====================================================================
 dat_voi_test <- dat_voi%>%
-  filter(yyyy == 2008)%>%
-  filter(doy == 180)%>%
-  mutate(sigma_v = c(1.3, 2, 0.2, 0.4, 0.2,1.3, 2, 0.2, 0.4, 0.2,1.3, 2, 0.2, 0.4, 0.2, 0.9, 0.2))%>%
+  filter(yyyy == 2019)%>%
+  filter(doy == 152)%>%
+  mutate(sigma_v = c(1.3, 2, 0.2, 0.4, 0.2,1.3, 2, 0.2, 0.4, 0.2,1.3, 2, 0.2, 0.4, 0.2, 0.9, 0.2, 0.4, 0.7, 0.8))%>%
   mutate(h = 1000)
 
 FFP <- calc_footprint_FFP_climatology(dat_voi_test$zm, 
@@ -112,60 +114,44 @@ FFP_E <- calc_footprint_FFP_climatology(test_df$zm,
 #===============================================================================
 #======================contour extents to shapefiles(?)=========================
 #===============================================================================
+#xr and yr: list number is % contour in output
 
-#xr and yr: list number = % contour in output
-
-#list for line vectors
+#list to store FFP xy pairs- separate columns for clarity
 coord_pair_list <- list()
 
-#make lines from FFP output coords
-#length of x depends on optional r argument in the climatology function
+#format raw points as numeric matrix with NAs removed to avoid errors
 for (i in 1:length(FFP$xr)) {
-  #combine list values to make df of ordered pairs and store in list
-  coord_pair_list[[i]] <- data.frame(x = FFP$xr[[i]], y = FFP$yr[[i]])
-  }
-
-#georef: make (0,0) equal to tower coords. pixels in meters
-
-#non numeric error keeps coming up. make df values numeric w function
-coord_pair_list <- lapply(seq_along(FFP$xr), function(i) {
-  data.frame(x = as.numeric(FFP$xr[[i]]), y = as.numeric(FFP$yr[[i]]))
-})
-#na error (topological? or from excluded contours?). remove nas from dfs w function
-coord_pair_list <- lapply(coord_pair_list, function(df) {
-  na.omit(df)
-})
-
-#error due to df not being a matirx. convert df to matix and then apply function from sf to convert points to lines
-#set crs (same as RAP) with st_sfc at the same time
-lines_list <- st_sfc(lapply(coord_pair_list, function(coords) {
-  st_linestring(as.matrix(coords))
-}), crs = 4326)
-
-#plot(lines_list[[3]], axes = T)
-
-#loading RAP data
-#pathtoRAPrast <- "./Data/RAP/dif_rast.tif"
-#rast <- rast(pathtoRAPrast)
-
-#convert a simple feature to a polygon (terra)
-test <- lines_list[[3]]
-
-test_list <- lines_list
-
-test_list <- for (i in 1:length(test_list)){
-  test_list[[i]] <- vect(test_list[[i]])
+  df <- data.frame(x = as.numeric(FFP$xr[[i]]), y = as.numeric(FFP$yr[[i]]))
+  df <- na.omit(df)
+  coord_pair_list[[i]] <- as.matrix(df)
 }
 
-# (0,0) = 31.6637, -110.1777 = tower position
-# divide lat by 111,111m and add to tower lat for coord position
-# longitude changes by position on the earth, so add cosine correction
-# correction: x_meters / 111,111_meters * cos(latitude) = long; add long to tower long position
-# maybe radians
-e <- vect(test)
-crs(e) <- crs(rast)
+#convert standard plane coords to lat/lon coords (approximate distance conversion)
+#1 deg ~ 111,111m
+#latitude increments do not change w position on the globe but longistude does, so include cosine correction (convert degrees to radians to do so)
+#(0,0) = 31.6637, -110.1777 = tower position
+latlon_list <- list()
+for (i in seq_along(coord_pair_list)) {
+  lat <- (coord_pair_list[[i]][, 2] / 111111) + 31.6637
+  lon <- (coord_pair_list[[i]][, 1] / (111111 * cos(31.6637 * pi / 180))) - 110.1777
+  latlon_list[[i]] <- cbind(lon, lat)
+}
 
+#list to store line geom
+lines_list <- list()
+#convert points matrix to Spatvects to work with mask function
+for (i in seq_along(latlon_list)) {
+  lines_list[[i]] <- vect(latlon_list[[i]], type = "lines")
+}
+
+#loading RAP data
+rast <- rast(pathtoRAPrast)
+#add raster crs to FFP contours
+for (i in seq_along(lines_list)) {
+  crs(lines_list[[i]]) <- crs(rast)
+}
+
+e <- lines_list[[9]]
 testmask <- mask(rast, e)
 plot(testmask)
-
 
