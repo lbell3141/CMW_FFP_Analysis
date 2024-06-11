@@ -3,6 +3,9 @@ library(EBImage)
 install.packages("./spatialfil_0.15.tar.gz", repos = NULL, type = "source")
 library(plot3D)
 library(sf)
+library(terra)
+
+#1D FFP====================================================================
 
 FFP <- calc_footprint_FFP(7, NaN, 1.47091, 1000, -3.543327409, 0.018049909, 0.257615)
 plot(FFP$x_ci,FFP$f_ci, type="l") 
@@ -128,7 +131,6 @@ for (i in 1:length(FFP$xr)) {
 coord_pair_list <- lapply(seq_along(FFP$xr), function(i) {
   data.frame(x = as.numeric(FFP$xr[[i]]), y = as.numeric(FFP$yr[[i]]))
 })
-
 #na error (topological? or from excluded contours?). remove nas from dfs w function
 coord_pair_list <- lapply(coord_pair_list, function(df) {
   na.omit(df)
@@ -140,9 +142,30 @@ lines_list <- st_sfc(lapply(coord_pair_list, function(coords) {
   st_linestring(as.matrix(coords))
 }), crs = 4326)
 
-test <- plot(lines_list[[3]])
+#plot(lines_list[[3]], axes = T)
 
 #loading RAP data
-pathtoRAPrast <- "./Data/RAP/dif_rast.tif"
-rast <- rast(pathtoRAPrast)
+#pathtoRAPrast <- "./Data/RAP/dif_rast.tif"
+#rast <- rast(pathtoRAPrast)
+
+#convert a simple feature to a polygon (terra)
+test <- lines_list[[3]]
+
+test_list <- lines_list
+
+test_list <- for (i in 1:length(test_list)){
+  test_list[[i]] <- vect(test_list[[i]])
+}
+
+# (0,0) = 31.6637, -110.1777 = tower position
+# divide lat by 111,111m and add to tower lat for coord position
+# longitude changes by position on the earth, so add cosine correction
+# correction: x_meters / 111,111_meters * cos(latitude) = long; add long to tower long position
+# maybe radians
+e <- vect(test)
+crs(e) <- crs(rast)
+
+testmask <- mask(rast, e)
+plot(testmask)
+
 
