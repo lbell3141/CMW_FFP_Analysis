@@ -75,7 +75,7 @@ bar_df_HH <- bar_df_HH |>
     u_x_bar = (1 / n()) * sum(U_i * sin(theta_stand - pi)),
     u_y_bar = (1 / n()) * sum(U_i * cos(theta_stand - pi)),
     theta_v_bar = atan2(u_x_bar, u_y_bar) + pi,
-    sigma_v_sqd = (1 / (n() - 1)) * sum(U_i * sin(theta_v_bar - theta_stand)),
+    sigma_v_sqd = (1 / (n() - 1)) * sum((U_i * sin(theta_v_bar - theta_stand))^2),
     sigma_v = sqrt(abs(sigma_v_sqd)))
 
 #bind final product to Ameriflux CMW record

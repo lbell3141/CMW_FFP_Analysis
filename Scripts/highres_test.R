@@ -74,7 +74,7 @@ bar_df_HH <- bar_df %>%
     u_x_bar = (1 / n()) * sum(u_i * sin(theta_stand - pi)),
     u_y_bar = (1 / n()) * sum(u_i * cos(theta_stand - pi)),
     theta_v_bar = atan2(u_x_bar, u_y_bar) + pi,
-    sigma_v_sqd = (1 / (n() - 1)) * sum(u_i * sin(theta_v_bar - theta_stand)),
+    sigma_v_sqd = (1 / (n() - 1)) * sum((u_i * sin(theta_v_bar - theta_stand))^2),
     sigma_v = sqrt(abs(sigma_v_sqd))
   )
 bar_df_HH$theta_v_bar_comp <- radians_to_compass(bar_df_HH$theta_v_bar)
@@ -112,7 +112,7 @@ dat_file$TIMESTAMP_START <- ymd_hm(as.character(dat_file$TIMESTAMP_START))
 dat_file$VPD = RHtoVPD(dat_file$RH_1_1_1, dat_file$TA_1_1_1, dat_file$PA)
 
 meas_h <- 14
-d <- 7
+d <- meas_h*2/3
 bound_h <- 1000
 
 dat_voi = dat_file %>%
