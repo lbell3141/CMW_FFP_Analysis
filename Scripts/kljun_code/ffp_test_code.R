@@ -18,7 +18,7 @@ plot(FFP$x_ci,FFP$f_ci, type="l")
 dat_voi <- dat_ffp
 dat_voi_test <- dat_voi%>%
   filter(yyyy == 2019)%>%
-  filter(mm == 3)%>%
+  filter(doy == 3)%>%
   mutate(sigma_v = 0.4)%>%
   mutate(h = 1000)%>%
   mutate(z0 = NaN)
@@ -40,6 +40,75 @@ for (i in 1:8) lines(FFP$xr[[i]], FFP$yr[[i]], type="l", col="red")
 
 #surf3D(FFP$x_2d, FFP$y_2d,FFP$fclim_2d) 
 #===============================================================================
+#======================contour extents to raster masks==========================
+#===============================================================================
+#xr and yr: list number is % contour in output
+
+#list to store FFP xy pairs- separate columns for clarity
+coord_pair_list <- list()
+
+#format raw points as numeric matrix with NAs removed to avoid errors
+for (i in 1:length(FFP$xr)) {
+  df <- data.frame(x = as.numeric(FFP$xr[[i]]), y = as.numeric(FFP$yr[[i]]))
+  df <- na.omit(df)
+  coord_pair_list[[i]] <- as.matrix(df)
+}
+
+#convert standard plane coords to lat/lon coords (approximate distance conversion)
+#1 deg ~ 111,111m
+#latitude increments do not change w position on the globe but longitude does, so include cosine correction (convert degrees to radians to do so)
+#(0,0) = 31.6637, -110.1777 = tower position
+latlon_list <- list()
+for (i in seq_along(coord_pair_list)) {
+  lat <- (coord_pair_list[[i]][, 2] / 111111) + 31.6637
+  lon <- (coord_pair_list[[i]][, 1] / (111111 * cos(31.6637 * pi / 180))) - 110.1777
+  latlon_list[[i]] <- cbind(lon, lat)
+}
+
+#list to store line geom
+lines_list <- list()
+#convert points matrix to Spatvects to work with mask function
+for (i in seq_along(latlon_list)) {
+  lines_list[[i]] <- vect(latlon_list[[i]], type = "lines")
+}
+
+#loading RAP data
+rast <- rast(pathtoRAPrast)
+#add raster crs to FFP contours
+for (i in seq_along(lines_list)) {
+  crs(lines_list[[i]]) <- crs(rast)
+}
+
+#make a list of 30%, 60% and, 90% contours
+part_con_list <- list(lines_list[[3]],lines_list[[6]],lines_list[[9]])
+masked_rast <- list()
+for (i in seq_along(part_con_list)){
+  masked_rast[[i]]<- mask(rast, part_con_list[[i]])
+  }
+
+#subtract inner contours: inverse argument returns areas were rasters do NOT overlap 
+dif_con_list <- list(masked_rast[[1]], 
+                     mask(masked_rast[[2]], masked_rast[[1]], inverse = T),
+                     mask(masked_rast[[3]], masked_rast[[2]], inverse = T))
+
+#compute avg values (terra::global for stats) of pixels for each contour grouping in list
+rap_vals <- list()
+for (i in seq_along(dif_con_list)){
+  rap_vals[i] <- global(dif_con_list[[i]], fun = mean, na.rm = TRUE)
+#weight contour areas
+  veg_cover <- 0.3 * sum(unlist(lapply(rap_vals, sum)))
+}
+
+#store values by hand in array
+veg_vect <- c(1,2,3,4)
+#===============================================================================
+#===============================================================================
+#===============================================================================
+
+
+
+
+#===============================================================================
 #=========lateral velocity fluctuation (sigma_v) sensitivity test===============
 #===============================================================================
 #for a 10 degree directional window, what is the sensitivity of the footprint prediction to (reasonable) changes in the value of sigma_v
@@ -60,16 +129,16 @@ test_dist_D <- abs(rnorm(nrow(test_df), mean = 1.1, sd = 0.2))
 test_dist_E<- abs(rnorm(nrow(test_df), mean = 1.4, sd = 0.2))
 
 FFP_A <- calc_footprint_FFP_climatology(test_df$zm, 
-                                      test_df$zo, 
-                                      test_df$u_mean, 
-                                      test_df$h, 
-                                      test_df$L, 
-                                      test_dist_A,
-                                      test_df$u_star,
-                                      test_df$wind_dir, 
-                                      fig = 1,
-                                      domain = c(-250,250,-250,250), 
-                                      r = seq(0,90, by = 10))
+                                        test_df$zo, 
+                                        test_df$u_mean, 
+                                        test_df$h, 
+                                        test_df$L, 
+                                        test_dist_A,
+                                        test_df$u_star,
+                                        test_df$wind_dir, 
+                                        fig = 1,
+                                        domain = c(-250,250,-250,250), 
+                                        r = seq(0,90, by = 10))
 
 FFP_B <- calc_footprint_FFP_climatology(test_df$zm, 
                                         test_df$zo, 
@@ -115,47 +184,3 @@ FFP_E <- calc_footprint_FFP_climatology(test_df$zm,
                                         fig = 1,
                                         domain = c(-250,250,-250,250), 
                                         r = seq(0,90, by = 10))
-#===============================================================================
-#======================contour extents to shapefiles(?)=========================
-#===============================================================================
-#xr and yr: list number is % contour in output
-
-#list to store FFP xy pairs- separate columns for clarity
-coord_pair_list <- list()
-
-#format raw points as numeric matrix with NAs removed to avoid errors
-for (i in 1:length(FFP$xr)) {
-  df <- data.frame(x = as.numeric(FFP$xr[[i]]), y = as.numeric(FFP$yr[[i]]))
-  df <- na.omit(df)
-  coord_pair_list[[i]] <- as.matrix(df)
-}
-
-#convert standard plane coords to lat/lon coords (approximate distance conversion)
-#1 deg ~ 111,111m
-#latitude increments do not change w position on the globe but longistude does, so include cosine correction (convert degrees to radians to do so)
-#(0,0) = 31.6637, -110.1777 = tower position
-latlon_list <- list()
-for (i in seq_along(coord_pair_list)) {
-  lat <- (coord_pair_list[[i]][, 2] / 111111) + 31.6637
-  lon <- (coord_pair_list[[i]][, 1] / (111111 * cos(31.6637 * pi / 180))) - 110.1777
-  latlon_list[[i]] <- cbind(lon, lat)
-}
-
-#list to store line geom
-lines_list <- list()
-#convert points matrix to Spatvects to work with mask function
-for (i in seq_along(latlon_list)) {
-  lines_list[[i]] <- vect(latlon_list[[i]], type = "lines")
-}
-
-#loading RAP data
-rast <- rast(pathtoRAPrast)
-#add raster crs to FFP contours
-for (i in seq_along(lines_list)) {
-  crs(lines_list[[i]]) <- crs(rast)
-}
-
-e <- lines_list[[9]]
-testmask <- mask(rast, e)
-plot(testmask)
-
