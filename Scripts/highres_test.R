@@ -74,10 +74,10 @@ bar_df_HH <- bar_df %>%
     u_x_bar = (1 / n()) * sum(u_i * sin(theta_stand - pi)),
     u_y_bar = (1 / n()) * sum(u_i * cos(theta_stand - pi)),
     theta_v_bar = atan2(u_x_bar, u_y_bar) + pi,
-    sigma_v_sqd = (1 / (n() - 1)) * sum(u_i * sin(theta_v_bar - u_i)),
+    sigma_v_sqd = (1 / (n() - 1)) * sum(u_i * sin(theta_v_bar - theta_stand)),
     sigma_v = sqrt(abs(sigma_v_sqd))
   )
-
+bar_df_HH$theta_v_bar_comp <- radians_to_compass(bar_df_HH$theta_v_bar)
 #check relationship
 plot(bar_df_HH$u_i_bar, bar_df_HH$sigma_v)
 
@@ -160,8 +160,8 @@ dat_voi$u_star = as.numeric(dat_voi$u_star)
 dat_voi$wind_dir = as.numeric(dat_voi$wind_dir)
 #===============================================================================
 dat_voi_hfday <- dat_voi%>%
-  filter(yyyy == 2022)%>%
-  filter(mm == 1)
+  filter(yyyy == 2019)%>%
+  filter(doy == 1)
 
 #plotting 
 ggplot(dat_voi, aes(x = factor(doy), y = wind_sp)) + 
