@@ -8,15 +8,41 @@ hf_dataset <-
   arrow::open_tsv_dataset(
     sources = here::here(
       "Data/High_Freq_Data",
-      "Jan2019.txt"))
+      "Jan2019.txt")
+    #col_types = c("c", "i", "n", "n", "n", "n", "n", "n", "n", "n")
+    )
+hf_dataset_schema <- schema(hf_dataset)
 
+hf_dataset_schema$TimeStamp <- string()
 
-collect()
+hf_dataset <-
+  arrow::open_tsv_dataset(
+    sources = here::here(
+      "Data/High_Freq_Data",
+      "Jan2019.txt"), 
+    schema = hf_dataset_schema,
+    skip = 1
+  )
+
+hf_dataset |>
+  head() |>
+  collect()
+
+hf_dataset |>
+  mutate(TimeStamp = ymd_hms(TimeStamp)) |>
+  head() |>
+             collect()
+
+#collect()
+hf_dataset <- hf_dataset |>
+  mutate(row_ID = row_number(),
+         Date = as.Date(TimeStamp)) |>
+  head() |>
+  collect()
+
+#duckdb
 
 toc()
-
-
-
 
 #load relevant libraries
 library(dplyr)
