@@ -8,19 +8,23 @@ library(terra)
 pathtoRAPrast <- "./Data/RAP/dif_rast.tif"
 
 #1D FFP====================================================================
+L_bar <- mean(dat_voi_test$L, na.rm = T)
+ustar_bar <- mean(dat_voi_test$u_star, na.rm = T)
 
-FFP <- calc_footprint_FFP(7, NaN, 1.47091, 1000, -3.543327409, 0.018049909, 0.257615)
+FFP <- calc_footprint_FFP(4.666667, NaN, 1.47091, 1000, L_bar, 0.4, ustar_bar)
 plot(FFP$x_ci,FFP$f_ci, type="l") 
 
 #climatology====================================================================
+dat_voi <- dat_ffp
 dat_voi_test <- dat_voi%>%
   filter(yyyy == 2019)%>%
-  filter(doy == 152)%>%
-  mutate(sigma_v = c(1.3, 2, 0.2, 0.4, 0.2,1.3, 2, 0.2, 0.4, 0.2,1.3, 2, 0.2, 0.4, 0.2, 0.9, 0.2, 0.4, 0.7, 0.8))%>%
-  mutate(h = 1000)
+  filter(mm == 3)%>%
+  mutate(sigma_v = 0.4)%>%
+  mutate(h = 1000)%>%
+  mutate(z0 = NaN)
 
 FFP <- calc_footprint_FFP_climatology(dat_voi_test$zm, 
-                                      dat_voi_test$zo, 
+                                      dat_voi_test$z0, 
                                       dat_voi_test$u_mean, 
                                       dat_voi_test$h, 
                                       dat_voi_test$L, 
@@ -28,8 +32,8 @@ FFP <- calc_footprint_FFP_climatology(dat_voi_test$zm,
                                       dat_voi_test$u_star,
                                       dat_voi_test$wind_dir, 
                                       fig = 1,
-                                      domain = c(-250,250,-250,250), 
-                                      r = seq(0,90, by = 10))
+                                      domain = c(-200,200,-200,200), 
+                                      r = seq(0,80, by = 10))
 
 image.plot(FFP$x_2d[1,], FFP$y_2d[,1], FFP$fclim_2d) 
 for (i in 1:8) lines(FFP$xr[[i]], FFP$yr[[i]], type="l", col="red") 
