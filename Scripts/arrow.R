@@ -1,20 +1,21 @@
 library(arrow)
 library(tictoc)
 library(dplyr)
+library(duckdb)
 
 tic()
-
+#opening dataset as a tab sep file with source location
 hf_dataset <-
   arrow::open_tsv_dataset(
     sources = here::here(
       "Data/High_Freq_Data",
-      "Jan2019.txt")
-    #col_types = c("c", "i", "n", "n", "n", "n", "n", "n", "n", "n")
-    )
-hf_dataset_schema <- schema(hf_dataset)
+      "Jan2019.txt"))
 
+#making schema object and formatting TimeStamp explicitly as a character string
+hf_dataset_schema <- schema(hf_dataset)
 hf_dataset_schema$TimeStamp <- string()
 
+#reopening the dataset and applying modified schema
 hf_dataset <-
   arrow::open_tsv_dataset(
     sources = here::here(
@@ -24,21 +25,39 @@ hf_dataset <-
     skip = 1
   )
 
+#pass to duckdb and add row ID column 
+hf_dataset |>
+  to_duckdb() |>
+  mutate(row_ID = row_number()) |>
+
+group_date 
+  group_by(group = (row_ID - 1) %/% 30) |>
+  summarise(TimeStamp = first(TimeStamp))|>
+  head() |>
+  collect()
+
+
+group_date <- hf_data %>%
+  # "%/% rounds down to the whole number in the quotient
+  group_by(group = (row_ID - 1) %/% 30) %>%
+  summarise(Date = first(Date))
+
+
+#checking data
 hf_dataset |>
   head() |>
   collect()
 
-hf_dataset |>
-  mutate(TimeStamp = ymd_hms(TimeStamp)) |>
-  head() |>
-             collect()
+#hf_dataset |>
+#  mutate(TimeStamp = ymd_hms(TimeStamp)) |>
+#  head() |>
+#             collect()
 
-#collect()
-hf_dataset <- hf_dataset |>
-  mutate(row_ID = row_number(),
-         Date = as.Date(TimeStamp)) |>
-  head() |>
-  collect()
+#hf_dataset <- hf_dataset |>
+#  mutate(row_ID = row_number(),
+ #        Date = as.Date(TimeStamp)) |>
+ # head() |>
+ # collect()
 
 #duckdb
 
