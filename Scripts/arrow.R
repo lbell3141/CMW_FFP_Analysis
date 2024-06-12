@@ -10,11 +10,9 @@ hf_dataset <-
     sources = here::here(
       "Data/High_Freq_Data",
       "Jan2019.txt"))
-
 #making schema object and formatting TimeStamp explicitly as a character string
 hf_dataset_schema <- schema(hf_dataset)
 hf_dataset_schema$TimeStamp <- string()
-
 #reopening the dataset and applying modified schema
 hf_dataset <-
   arrow::open_tsv_dataset(
@@ -25,117 +23,63 @@ hf_dataset <-
     skip = 1
   )
 
-#pass to duckdb and add row ID column 
-hf_dataset |>
+#pass to duckdb and add row ID column and group ID 
+hf_dataset <-  hf_dataset|>
   to_duckdb() |>
   mutate(row_ID = row_number()) |>
+  mutate(group_ID = (row_ID - 1) %/% 30) 
 
-group_date 
-  group_by(group = (row_ID - 1) %/% 30) |>
-  summarise(TimeStamp = first(TimeStamp))|>
-  head() |>
-  collect()
+#create df with time for each group
+#use arrange or output will be in random order, even though calculated correctly
+group_date <- hf_dataset |>
+  group_by(group_ID) |>
+  summarize(TimeStamp = first(TimeStamp)) |>
+  arrange(group_ID) 
 
-
-group_date <- hf_data %>%
-  # "%/% rounds down to the whole number in the quotient
-  group_by(group = (row_ID - 1) %/% 30) %>%
-  summarise(Date = first(Date))
-
-
-#checking data
-hf_dataset |>
-  head() |>
-  collect()
-
-#hf_dataset |>
-#  mutate(TimeStamp = ymd_hms(TimeStamp)) |>
-#  head() |>
-#             collect()
-
-#hf_dataset <- hf_dataset |>
-#  mutate(row_ID = row_number(),
- #        Date = as.Date(TimeStamp)) |>
- # head() |>
- # collect()
-
-#duckdb
-
-toc()
-
-#load relevant libraries
-library(dplyr)
-library(lubridate)
-library(ggplot2)
-library(plantecophys)
-library(arrow)
-
-#set data paths
-pathtoHFdata <- "./Data/High_Freq_Data/Jan2019.txt"
-pathtoHHdata <- "./Data/AMF_US-CMW_BASE_HH_2-5.csv"
-
-#===============================================================================
-#=====================Aggregate 10Hz to 3s observations=========================
-#===============================================================================
-#load high frequency data (10Hz obs)
-hf_data <- read.table(pathtoHFdata, header = TRUE, sep = "\t")
-#format timestamp
-hf_data$TimeStamp <- ymd_hms(hf_data$TimeStamp)
-#split into groups of 30 observations 
-#add row number
-hf_data <- hf_data %>%
-  mutate(row_ID = row_number())
-#adding dates by brute force bc something is wonky when I do it in the pipe w the rest of the values
-#new column for dates in order to keep hm info in timestamp column
-hf_data <- hf_data %>%
-  mutate(Date = as.Date(TimeStamp))
-group_date <- hf_data %>%
-  # "%/% rounds down to the whole number in the quotient
-  group_by(group = (row_ID - 1) %/% 30) %>%
-  summarise(Date = first(Date))
-
-#add date to real df
-ag_3s_df <- hf_data %>%
-  group_by(group = (row_ID - 1) %/% 30) %>%
+#average high freq data into 3s using groups
+#then, calculate wind speed and direction from 3s vector components
+ag3_dataset <- hf_dataset |>
+  group_by(group_ID) |>
   summarise(
-    Date = first(Date),
     Time = max(TimeStamp, na.rm = TRUE),
     Ux = mean(Ux, na.rm = TRUE),
     Uy = mean(Uy, na.rm = TRUE),
-    Uz = mean(uZ, na.rm = TRUE)
-  )
+    Uz = mean(uZ, na.rm = TRUE))|>
+  mutate(
+    U_i = ((((Ux)^2) + ((Uy)^2)))^(1/2),
+    theta_stand = atan2(Ux, Uy)) |>
+  arrange(group_ID)
 
-#===============================================================================
-#==================Calculate theta_i from vector components=====================
-#===============================================================================
-#use x and y components of wind direction and pythagorean thm to calc magnitude (wind speed)
-ag_3s_df$u_i <- ((((ag_3s_df$Ux)^2) + ((ag_3s_df$Uy)^2)))^(1/2)
-#atan2 returns quadrant-sensitive outputs (ie 0 to pi to -pi instead of just 0 to pi)
-ag_3s_df$theta_stand <- atan2(ag_3s_df$Ux, ag_3s_df$Uy) 
-
-#convert to compass degrees from standard plane radians
+#function to convert to compass degrees from standard plane radians
 radians_to_compass <- function(angle_rad) {
   angle_deg <- angle_rad * (180 / pi)  
   compass_angle <- (90 - angle_deg) %% 360  
   return(compass_angle)
 }
 
-ag_3s_df$theta_cc <- radians_to_compass(ag_3s_df$theta_stand)
+#apply function (convert rads to degs)
+ag3_dataset <- ag3_dataset |>
+  mutate(theta_cc = radians_to_compass(theta_stand))
 
-#===============================================================================
-#====================Calculate half-hourly theta_v_bar==========================
-#===============================================================================
+#create groups for half hours
+bar_df_HH <- ag3_dataset |>
+  #to_duckdb() |>
+  mutate(HH_group_ID = (group_ID - 1) %/% 600)
 
-bar_df <- ag_3s_df
-
-#group by half hour (every 600 observations) and calc variables
-bar_df_HH <- bar_df %>%
-  group_by(group = group %/% 600) %>%
+#calculate half hourly wind speed (u_i_bar) and direction (theta_v_bar)
+#calculate half hourly st dev of lateral wind velocity (sigma_v)
+bar_df_HH <- bar_df_HH |>
+  group_by(HH_group_ID) |>
   summarise(
-    u_i_bar = (1 / n()) * sum(u_i),
-    u_x_bar = (1 / n()) * sum(u_i * sin(theta_stand - pi)),
-    u_y_bar = (1 / n()) * sum(u_i * cos(theta_stand - pi)),
+    u_i_bar = (1 / n()) * sum(U_i),
+    u_x_bar = (1 / n()) * sum(U_i * sin(theta_stand - pi)),
+    u_y_bar = (1 / n()) * sum(U_i * cos(theta_stand - pi)),
     theta_v_bar = atan2(u_x_bar, u_y_bar) + pi,
-    sigma_v_sqd = (1 / (n() - 1)) * sum(u_i * sin(theta_v_bar - u_i)),
-    sigma_v = sqrt(abs(sigma_v_sqd))
-  )
+    sigma_v_sqd = (1 / (n() - 1)) * sum(U_i * sin(theta_v_bar - theta_stand)),
+    sigma_v = sqrt(abs(sigma_v_sqd)))
+
+#bind final product to Ameriflux CMW record
+#to_arrow > write_csv_arrow
+
+toc()
+
