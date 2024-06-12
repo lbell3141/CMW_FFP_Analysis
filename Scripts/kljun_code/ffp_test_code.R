@@ -9,7 +9,7 @@ pathtoRAPrast <- "./Data/RAP/dif_rast.tif"
 
 #1D FFP====================================================================
 L_bar <- mean(dat_voi_test$L, na.rm = T)
-ustar_bar <- mean(dat_voi_test$u_star, na.rm = T)
+ustar_bar <- mean(dat_voi$u_star, na.rm = T)
 
 FFP <- calc_footprint_FFP(4.666667, NaN, 1.47091, 1000, L_bar, 0.4, ustar_bar)
 plot(FFP$x_ci,FFP$f_ci, type="l") 
