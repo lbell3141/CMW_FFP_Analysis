@@ -27,9 +27,9 @@ R = 0.8
 c = 1.462
 d = 0.136
 z_m = 4.666667
-h = 1000
+h = 10000
 u_bar = 1.47091
-u_star =  ustar_bar
+u_star =  0.5
 k = 0.4
 
 #distance from the tower that the R% contour samples

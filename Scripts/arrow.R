@@ -94,6 +94,3 @@ bar_df_HH <- bar_df %>%
     sigma_v_sqd = (1 / (n() - 1)) * sum(u_i * sin(theta_v_bar - u_i)),
     sigma_v = sqrt(abs(sigma_v_sqd))
   )
-
-#check relationship
-plot(bar_df_HH$u_i_bar, bar_df_HH$sigma_v)
