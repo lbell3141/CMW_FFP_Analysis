@@ -3,8 +3,10 @@ library(tictoc)
 library(dplyr)
 library(duckdb)
 
+#tic()...toc() reports processing time and is not integral to the actual processing code
 tic()
-#opening dataset as a tab sep file with source location
+
+#opening dataset as a tab sep file with source location; formatting error fixed below (15:26)
 hf_dataset <-
   arrow::open_tsv_dataset(
     sources = here::here(
@@ -48,53 +50,57 @@ ag3_dataset <- hf_dataset |>
     Uz = mean(uZ, na.rm = TRUE))|>
   mutate(
     U_i = ((((Ux)^2) + ((Uy)^2)))^(1/2),
-    theta_stand = atan2(Ux, Uy)) |>
-  arrange(group_ID)
+    theta_stand = atan2(Ux, Uy)) 
 
 #function to convert to compass degrees from standard plane radians
 #mutate instead of function
-ag3_dataset <- ag3_dataset |>
-  mutate(
-    angle_deg = theta_stand * (180 / pi),
-    comp_angle = (90 - angle_deg) %% 360 
-  ) 
+#ag3_dataset <- ag3_dataset |>
+#  mutate(
+#    angle_deg = theta_stand * (180 / pi),
+#    comp_angle = (90 - angle_deg) %% 360 
+#  ) 
 
 #create groups for half hours
 bar_df_HH <- ag3_dataset |>
   mutate(HH_group_ID = (group_ID) %/% 600) 
 
 #calculate half hourly wind speed (u_i_bar) and direction (theta_v_bar)
-#calculate half hourly st dev of lateral wind velocity (sigma_v)
+#error using nested mutate/summarize, so calc averages and internal expressions before final sigma_v calculations
 bar_df_HH <- bar_df_HH |>
   group_by(HH_group_ID) |>
   mutate(
     u_x_bar = (1 / n()) * sum(U_i * sin(theta_stand - pi)),
-    u_y_bar = (1 / n()) * sum(U_i * cos(theta_stand - pi)))|>
-  summarise(
+    u_y_bar = (1 / n()) * sum(U_i * cos(theta_stand - pi)),
     u_i_bar = (1 / n()) * sum(U_i),
-    theta_v_bar = (atan2(u_x_bar, u_y_bar) + pi),
-    #mutate to create all sum terms for explicit ooo
-    sigma_v_sqd = (1 / (n() - 1)) * sum((U_i * sin((atan2(u_x_bar, u_y_bar) + pi) - theta_stand))^2))|>
+    theta_v_bar = (atan2(u_x_bar, u_y_bar) + pi), 
+    inside_sum = (U_i * sin((atan2(u_x_bar, u_y_bar) + pi) - theta_stand))^2
+    )
+#with defined terms, now calc sigmas                           
+bar_df_HH <- bar_df_HH |>
+  group_by(HH_group_ID) |>
   mutate(
-    sigma_v = sqrt(abs(sigma_v_sqd))) |>
+    sigma_v_sqd = (1 / (n() - 1)) * sum(inside_sum),
+    sigma_v = sqrt(abs(sigma_v_sqd))
+    )|>
   ungroup()|>
-  head()|>
-  collect()|>
-  arrange()
+  arrange(group_ID)
 
-
-
-
-#select variables of interest to write to csv
+#select variables of interest in HH form
 voi_dataset <- bar_df_HH |>
-  select(Time, u_i_bar, theta_v_bar, sigma_v)|>
+  group_by(HH_group_ID) |>
+  summarize(
+    Time = max(Time),
+    u_i_bar = mode(u_i_bar),
+    theta_v_bar = mode(theta_v_bar),
+    sigma_v = mode(sigma_v)
+  ) |>
+  arrange(HH_group_ID) |>
   to_arrow()
 
-#bind final product to Ameriflux CMW record
-#to_arrow > write_csv_arrow
+#write to csv
 write_csv_arrow(
   voi_dataset,
-  "./Data/High_Freq_Data/Processed/output_B.csv",
+  "./Data/High_Freq_Data/Processed/output_A.csv",
   col_names = T)
 
 toc()
