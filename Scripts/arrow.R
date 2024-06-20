@@ -10,11 +10,11 @@ tic()
 hf_dataset <-
   arrow::open_tsv_dataset(
     sources = here::here(
-      "Data/High_Freq_Data",
+      "E:/CM10Hz_text/",
       "Jan2019.txt"))
 #making schema object and formatting TimeStamp explicitly as a character string
 hf_dataset_schema <- schema(hf_dataset)
-hf_dataset_schema$TimeStamp <- string()
+hf_dataset_schema$TIMESTAMP <- string()
 #reopening the dataset and applying modified schema
 hf_dataset <-
   arrow::open_tsv_dataset(
@@ -35,7 +35,7 @@ hf_dataset <-  hf_dataset|>
 #use arrange or output will be in random order, even though calculated correctly
 group_date <- hf_dataset |>
   group_by(group_ID) |>
-  summarize(TimeStamp = first(TimeStamp)) |>
+  summarize(TIMESTAMP = first(TIMESTAMP)) |>
   arrange(group_ID) |>
   to_arrow()
 
@@ -44,10 +44,10 @@ group_date <- hf_dataset |>
 ag3_dataset <- hf_dataset |>
   group_by(group_ID) |>
   summarise(
-    Time = max(TimeStamp, na.rm = TRUE),
-    Ux = mean(Ux, na.rm = TRUE),
-    Uy = mean(Uy, na.rm = TRUE),
-    Uz = mean(uZ, na.rm = TRUE))|>
+    Time = max(TIMESTAMP, na.rm = TRUE),
+    Ux = mean(Ux.1., na.rm = TRUE),
+    Uy = mean(Uy.1., na.rm = TRUE),
+    Uz = mean(Uz.1., na.rm = TRUE))|>
   mutate(
     U_i = ((((Ux)^2) + ((Uy)^2)))^(1/2),
     theta_stand = atan2(Ux, Uy)) 
@@ -100,7 +100,7 @@ voi_dataset <- bar_df_HH |>
 #write to csv
 write_csv_arrow(
   voi_dataset,
-  "./Data/High_Freq_Data/Processed/output_A.csv",
+  "E:/test_output/output_A.csv",
   col_names = T)
 
 toc()
