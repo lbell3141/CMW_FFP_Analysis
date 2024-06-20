@@ -1,0 +1,188 @@
+{
+  "type": "Feature",
+  "stac_version": "1.0.0",
+  "id": "20240513_181312_65_249c",
+  "properties": {
+    "updated": "2024-05-14T08:15:59Z",
+    "created": "2024-05-14T01:59:47Z",
+    "gsd": 3.3,
+    "constellation": "planetscope",
+    "platform": "249c",
+    "instruments": [
+      "PSB.SD"
+    ],
+    "eo:cloud_cover": 14,
+    "view:off_nadir": 4.9,
+    "view:azimuth": 276.9,
+    "view:sun_azimuth": 127.4,
+    "view:sun_elevation": 70.3,
+    "pl:ground_control": true,
+    "pl:item_type": "PSScene",
+    "pl:pixel_resolution": 3,
+    "pl:publishing_stage": "finalized",
+    "pl:quality_category": "standard",
+    "pl:strip_id": "7300864",
+    "published": "2024-05-14T01:59:47Z",
+    "datetime": "2024-05-13T18:13:12.655257Z"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -110.179215,
+          31.668763
+        ],
+        [
+          -110.175149,
+          31.668505
+        ],
+        [
+          -110.175502,
+          31.6601
+        ],
+        [
+          -110.182701,
+          31.660198
+        ],
+        [
+          -110.182145,
+          31.663831
+        ],
+        [
+          -110.179215,
+          31.668763
+        ]
+      ]
+    ]
+  },
+  "links": [
+    {
+      "rel": "root",
+      "href": "../catalog.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "collection",
+      "href": "./PSScene_collection.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "parent",
+      "href": "./PSScene_collection.json",
+      "type": "application/json"
+    }
+  ],
+  "assets": {
+    "20240513_181312_65_249c_metadata_json": {
+      "href": "./20240513_181312_65_249c_metadata.json",
+      "type": "application/json",
+      "roles": [
+        "metadata"
+      ]
+    },
+    "20240513_181312_65_249c_3B_Visual_clip_tif": {
+      "href": "./20240513_181312_65_249c_3B_Visual_clip.tif",
+      "type": "image/tiff",
+      "pl:asset_type": "ortho_visual",
+      "pl:bundle_type": "visual",
+      "raster:bands": [
+        {
+          "data_type": "uint8",
+          "spatial_resolution": 3.0,
+          "statistics": {
+            "minimum": 0.0,
+            "maximum": 228.0
+          }
+        },
+        {
+          "data_type": "uint8",
+          "spatial_resolution": 3.0,
+          "statistics": {
+            "minimum": 0.0,
+            "maximum": 177.0
+          }
+        },
+        {
+          "data_type": "uint8",
+          "spatial_resolution": 3.0,
+          "statistics": {
+            "minimum": 0.0,
+            "maximum": 142.0
+          }
+        },
+        {
+          "data_type": "uint8",
+          "spatial_resolution": 3.0,
+          "statistics": {
+            "minimum": 0.0,
+            "maximum": 255.0
+          }
+        }
+      ],
+      "eo:bands": [
+        {
+          "name": "Red",
+          "common_name": "red",
+          "center_wavelength": 0.665,
+          "full_width_half_max": 0.03
+        },
+        {
+          "name": "Green",
+          "common_name": "green",
+          "center_wavelength": 0.565,
+          "full_width_half_max": 0.036
+        },
+        {
+          "name": "Blue",
+          "common_name": "blue",
+          "center_wavelength": 0.49,
+          "full_width_half_max": 0.05
+        },
+        {
+          "name": "Alpha",
+          "description": "Pixel opacity (0: fully transparent; 255: fully opaque)"
+        }
+      ],
+      "proj:epsg": 32612,
+      "proj:bbox": [
+        577482.0,
+        3503055.0,
+        578193.0,
+        3504015.0
+      ],
+      "proj:shape": [
+        320,
+        237
+      ],
+      "proj:transform": [
+        3.0,
+        0.0,
+        577482.0,
+        0.0,
+        -3.0,
+        3504015.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "roles": [
+        "data",
+        "visual"
+      ]
+    }
+  },
+  "bbox": [
+    -110.182701,
+    31.6601,
+    -110.175149,
+    31.668763
+  ],
+  "stac_extensions": [
+    "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+    "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+  ],
+  "collection": "1ad5d833-87ea-4626-b880-d6fc5e69368f: PSScene"
+}
