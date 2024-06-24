@@ -1,41 +1,42 @@
-
-
-test <- read.csv("E:/CM10Hz_text/TOA5_2003_01_01_000.dat", skip = 1,header = T)
-test_a <- test[3:nrow(test),]
-
-
 library(arrow)
 library(tictoc)
 library(dplyr)
 library(duckdb)
 
+#test_path <- here::here("E:/CM10Hz_text/", "TOA5_2003_01_01_000.dat")
+
 #tic()...toc() reports processing time and is not integral to the actual processing code
 tic()
 
 #opening dataset as a tab sep file with source location; formatting error fixed below (15:26)
-hf_dataset <-
-  arrow::open_tsv_dataset(
-    sources = here::here(
-      "E:/CM10Hz_text/",
-      "Jan2019.txt"))
+hf_dataset <- 
+  arrow::open_dataset(
+  "E:/CM10Hz_text/2003",
+  #partitioning = "month",
+  delim = ",",
+  skip = 4,
+  col_names = c("TIMESTAMP", "Ux", "Uy", "Uz", "co2", "h2o", "Ts", "press", "diag_csat"))|>
+  mutate(year = 2003)
+  
+
 #making schema object and formatting TimeStamp explicitly as a character string
 hf_dataset_schema <- schema(hf_dataset)
 hf_dataset_schema$TIMESTAMP <- string()
 #reopening the dataset and applying modified schema
-hf_dataset <-
-  arrow::open_tsv_dataset(
-    sources = here::here(
-      "Data/High_Freq_Data",
-      "Jan2019.txt"), 
-    schema = hf_dataset_schema,
-    skip = 1
-  )
-
+hf_dataset <- 
+  arrow::open_dataset(
+    "E:/CM10Hz_text/2003",
+    #partitioning = c("year", "month", "day"),
+    delim = ",",
+    skip = 4,
+    col_names = c("TIMESTAMP", "Ux", "Uy", "Uz", "co2", "h2o", "Ts", "press", "diag_csat"))|>
+  mutate(year = 2003)
 #pass to duckdb and add row ID column and group ID 
 hf_dataset <-  hf_dataset|>
   to_duckdb() |>
   mutate(row_ID = row_number()) |>
   mutate(group_ID = (row_ID - 1) %/% 30) 
+
 
 #create df with time for each group
 #use arrange or output will be in random order, even though calculated correctly
@@ -51,12 +52,13 @@ ag3_dataset <- hf_dataset |>
   group_by(group_ID) |>
   summarise(
     Time = max(TIMESTAMP, na.rm = TRUE),
-    Ux = mean(Ux.1., na.rm = TRUE),
-    Uy = mean(Uy.1., na.rm = TRUE),
-    Uz = mean(Uz.1., na.rm = TRUE))|>
+    Year = max(year),
+    Ux = mean(Ux, na.rm = TRUE),
+    Uy = mean(Uy, na.rm = TRUE),
+    Uz = mean(Uz, na.rm = TRUE))|>
   mutate(
     U_i = ((((Ux)^2) + ((Uy)^2)))^(1/2),
-    theta_stand = atan2(Ux, Uy)) 
+    theta_stand = atan2(Ux, Uy))
 
 #function to convert to compass degrees from standard plane radians
 #mutate instead of function
@@ -95,18 +97,22 @@ bar_df_HH <- bar_df_HH |>
 voi_dataset <- bar_df_HH |>
   group_by(HH_group_ID) |>
   summarize(
+    HH_group_ID = HH_group_ID,
     Time = max(Time),
+    Year = max(Year),
     u_i_bar = mode(u_i_bar),
     theta_v_bar = mode(theta_v_bar),
     sigma_v = mode(sigma_v)
   ) |>
-  arrange(HH_group_ID) |>
+  arrange(HH_group_ID)|>
   to_arrow()
 
 #write to csv
-write_csv_arrow(
-  voi_dataset,
-  "E:/test_output/output_A.csv",
-  col_names = T)
+  voi_dataset |>
+  group_by(Year)|>
+  write_dataset(
+    "E:/CM10Hz_Processed",
+    col_names = T,
+    format = "csv")
 
 toc()
