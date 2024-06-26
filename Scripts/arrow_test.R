@@ -11,12 +11,12 @@ tic()
 #opening dataset as a tab sep file with source location; formatting error fixed below (15:26)
 hf_dataset <- 
   arrow::open_dataset(
-  "E:/CM10Hz_text/2003",
+  "E:/CM10Hz_text/2021",
   #partitioning = "month",
   delim = ",",
   skip = 4,
   col_names = c("TIMESTAMP", "Ux", "Uy", "Uz", "co2", "h2o", "Ts", "press", "diag_csat"))|>
-  mutate(year = 2003)
+  mutate(year = 2021)
   
 
 #making schema object and formatting TimeStamp explicitly as a character string
@@ -25,12 +25,13 @@ hf_dataset_schema$TIMESTAMP <- string()
 #reopening the dataset and applying modified schema
 hf_dataset <- 
   arrow::open_dataset(
-    "E:/CM10Hz_text/2003",
+    "E:/CM10Hz_text/2021",
     #partitioning = c("year", "month", "day"),
     delim = ",",
     skip = 4,
     col_names = c("TIMESTAMP", "Ux", "Uy", "Uz", "co2", "h2o", "Ts", "press", "diag_csat"))|>
-  mutate(year = 2003)
+  mutate(year = 2021)
+
 #pass to duckdb and add row ID column and group ID 
 hf_dataset <-  hf_dataset|>
   to_duckdb() |>
