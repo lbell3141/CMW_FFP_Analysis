@@ -6,6 +6,8 @@ library(fields)
 library(EBImage)
 install.packages("./spatialfil_0.15.tar.gz", repos = NULL, type = "source")
 library(terra)
+library(dplyr)
+library(lubridate)
 
 #===============================================================================
 #======================calculate directional footprint==========================
@@ -34,7 +36,7 @@ calc_ffp <- function(x) {
 ffp_list <- lapply(split_dat, calc_ffp)
 
 #write list of calculations to data:
-saveRDS(ffp_list, file = "calcd_ffp_list.rds")
+#saveRDS(ffp_list, file = "calcd_ffp_list.rds")
 #to read use readRDS()
 
 #===============================================================================
@@ -42,7 +44,14 @@ saveRDS(ffp_list, file = "calcd_ffp_list.rds")
 #===============================================================================
 #load ffps and RAP data
 ffp_list <- readRDS("./Data/calcd_ffp_list.rds")
-rap <- rast("./Data/RAP/dif_rast.tif")
+rap <- rast("./Data/RAP/avg_rast.tif")
+dif_rap <- rast("./Data/RAP/dif_rast.tif")
+
+#increase raster resolution
+rap_resamp <- disagg(rap, fact = 10)
+#avg rap rast has woody and herbaceous layers
+woody <- rap_resamp[[2]]
+herb <- rap_resamp[[1]]
 
 #split ffp_list into a list of x coords and y coords
 x_list <- list()
@@ -56,15 +65,73 @@ for (i in seq_along(ffp_list)) {
 #apply function to lists and loaded RAP data:
 rap_ffp_list <- list()
 for (i in seq_along(x_list)) {
-  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], rap)
+  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], woody)
 }
 
-#convert to df
-rap_ffp_df <- data.frame(direction = seq(10, 350, by = 10),
+#convert to df with correct WD
+deg_int <- seq(10, 360, by = 10)
+skip <- 50
+deg_int_real <- deg_int[!deg_int %in% skip]
+
+rap_ffp_df <- data.frame(direction = deg_int_real,
                          veg_cover = unlist(rap_ffp_list)
                          )
-#direction window 40-50 missing
-skip_directions <- seq(40, 50, by = 10)
-rap_ffp_df <- rap_ffp_df[!rap_ffp_df$direction %in% skip_directions, ]
 
-plot(rap_ffp_df$direction, rap_ffp_df$veg_cover)
+#===============================================================================
+#=====================calculate GPP per 10 degree window========================
+#===============================================================================
+#load csv with data used in the ffp calcs
+dat <- read.csv("./Data/combined_CMdata.csv", header = T)
+dat$TIMESTAMP_END <- ymd_hms(as.character(dat$TIMESTAMP_END))
+
+#format df with same restrictions used in ffp calcs
+meas_h <- 14
+d <- (2/3) * meas_h
+
+CM_dat <- dat %>%
+  mutate(
+    yyyy = year(TIMESTAMP_END),
+    mm = month(TIMESTAMP_END),
+    day = day(TIMESTAMP_END),
+    HH_UTC = hour(TIMESTAMP_END),
+    MM = minute(TIMESTAMP_END),
+    zm = meas_h - d,
+    ol = (-((USTAR^3) * (TA_1_1_1 + 273)) / (0.4 * 9.8 * (H / (1.25 * 1004)))),
+    wind_dir = WD_1_1_1,
+    test = zm/ol
+  ) %>%
+  #filter(test >= -15.5)%>%
+  #filter(USTAR > 0.2)%>%
+  select(yyyy, mm, day, HH_UTC, MM, wind_dir, GPP_PI)%>%
+  filter(across(everything(), ~ . != "NA"))%>%
+  filter(HH_UTC %in% 8:17)
+
+#split into separate wind directions bins of 10 degrees
+deg_int <- seq(10, 360, by = 10)
+skip <- 50
+deg_int_real <- deg_int[!deg_int %in% skip]
+split_dat <- split(CM_dat, cut(CM_dat$wind_dir, deg_int, include.lowest = TRUE, labels = deg_int_real))
+for (i in seq_along(split_dat)) {
+  split_dat[[i]]$dir_group <- rep(names(split_dat)[i], nrow(split_dat[[i]]))
+}
+dir_dat <- do.call(rbind, split_dat)
+
+#avg gpp by group
+avg_gpp <- dir_dat %>%
+  group_by(dir_group) %>%
+  summarize(
+  avg_gpp = mean(GPP_PI, na.rm = T)
+  )
+#===============================================================================
+#=============================plot cover with avg gpp===========================
+#===============================================================================
+avg_gpp <- avg_gpp %>%
+  rename(direction = dir_group) %>%
+  mutate(direction = as.numeric(as.character(direction))) %>% 
+  arrange(direction)
+gpp_cover_df <- inner_join(rap_ffp_df, avg_gpp, by = "direction")
+
+plot(gpp_cover_df$veg_cover, gpp_cover_df$avg_gpp)
+par(mfrow = c(2, 1))
+plot(gpp_cover_df$direction, gpp_cover_df$avg_gpp)
+plot(gpp_cover_df$direction, gpp_cover_df$veg_cover)
