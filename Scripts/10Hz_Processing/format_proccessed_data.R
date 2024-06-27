@@ -60,7 +60,7 @@ proc_dat <- proc_dat %>%
   rename(TIMESTAMP_END = Time) 
   
 combd_dat <- merge(site_dat, proc_dat, by = "TIMESTAMP_END")
-
+#write.csv(combd_dat, "./Data/combined_CMdata.csv")
 #===============================================================================
 #============================prep data for ffp calc=============================
 #===============================================================================
