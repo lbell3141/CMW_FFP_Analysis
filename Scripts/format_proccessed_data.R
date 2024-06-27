@@ -77,8 +77,8 @@ all_clim_dat <- combd_dat %>%
     HH_UTC = hour(TIMESTAMP_END),
     MM = minute(TIMESTAMP_END),
     zm = meas_h - d,
-    z0 = "-999",
-    u_mean = mean(WS_1_1_1, na.rm = TRUE),
+    z0 = NaN,
+    umean = mean(WS_1_1_1, na.rm = TRUE),
     h = bound_h,
     ol = (-((USTAR^3) * (TA_1_1_1 + 273)) / (0.4 * 9.8 * (H / (1.25 * 1004)))),
     sigmav = sigma_v,
@@ -88,7 +88,7 @@ all_clim_dat <- combd_dat %>%
   ) %>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
-  select(yyyy, mm, day, HH_UTC, MM, zm, z0, u_mean, ol, sigmav, ustar, wind_dir)%>%
+  select(yyyy, mm, day, HH_UTC, MM, zm, z0, umean, h, ol, sigmav, ustar, wind_dir)%>%
   filter(across(everything(), ~ . != "NA"))%>%
   filter(HH_UTC %in% 8:17)
 
