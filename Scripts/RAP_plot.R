@@ -40,6 +40,7 @@ for (i in 1:4) {
 avg_rast <- rast(avg_rast_list)
 combd_rast <- c(avg_rast[[1]] + avg_rast[[2]], avg_rast[[3]] + avg_rast[[4]])
 names(combd_rast) <- c("Herbaceous", "Woody")
+#terra::writeRaster(combd_rast, filename = "./Data/RAP/avg_rast.tif", filetype = "GTiff", overwrite = TRUE)
 
 #create raster comparing proportion of woody/herbaceous cover per pixel
 #woody - herbaceous
