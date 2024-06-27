@@ -35,8 +35,8 @@ FFP <- calc_footprint_FFP_climatology(dat_voi_test$zm,
                                       domain = c(-200,200,-200,200), 
                                       r = seq(0,80, by = 10))
 
-image.plot(FFP$x_2d[1,], FFP$y_2d[,1], FFP$fclim_2d) 
-for (i in 1:8) lines(FFP$xr[[i]], FFP$yr[[i]], type="l", col="red") 
+image.plot(ffp_list[[24]]$x_2d[1,], ffp_list[[24]]$y_2d[,1], ffp_list[[24]]$fclim_2d) 
+for (i in 1:9) lines(ffp_list[[24]]$xr[[i]], ffp_list[[24]]$yr[[i]], type="l", col="red") 
 
 #surf3D(FFP$x_2d, FFP$y_2d,FFP$fclim_2d) 
 #===============================================================================
@@ -136,9 +136,9 @@ ffp_contours_to_mask <- function(xr_list, yr_list, rast) {
   }
   
   #make a list of 30%, 60%, and 90% contours
-  #part_con_list <- list(lines_list[[3]], lines_list[[6]], lines_list[[9]])
+  part_con_list <- list(lines_list[[3]], lines_list[[6]], lines_list[[9]])
   #make a list of 60%, and 90% contours
-  part_con_list <- list(lines_list[[6]], lines_list[[9]])
+  #part_con_list <- list(lines_list[[6]], lines_list[[9]])
   
   #mask the raster with the contours
   masked_rast <- list()
@@ -147,10 +147,9 @@ ffp_contours_to_mask <- function(xr_list, yr_list, rast) {
   }
 
   #subtract inner contours to get different contour groupings
-  dif_con_list <- list(masked_rast[[2]])
-                       #, 
-                       #mask(masked_rast[[2]], masked_rast[[1]], inverse = TRUE))
-                       #, mask(masked_rast[[3]], masked_rast[[2]], inverse = TRUE))
+  dif_con_list <- list(masked_rast[[1]], 
+                       mask(masked_rast[[2]], masked_rast[[1]], inverse = TRUE),
+                       mask(masked_rast[[3]], masked_rast[[2]], inverse = TRUE))
   
   #compute avg values of pixels for each contour grouping
   rap_vals <- list()
@@ -159,20 +158,11 @@ ffp_contours_to_mask <- function(xr_list, yr_list, rast) {
   }
   
   #weight contour areas
-  #veg_cover <- 0.3 * sum(unlist(rap_vals[[1]])) + 0.3 * sum(unlist(rap_vals[[2]])) + 0.3 * sum(unlist(rap_vals[[3]]))
+  veg_cover <- 0.3 * sum(unlist(rap_vals[[1]])) + 0.3 * sum(unlist(rap_vals[[2]])) + 0.3* sum(unlist(rap_vals[[3]]))
   #veg_cover <- 0.6 * sum(unlist(rap_vals[[1]])) + 0.3 * sum(unlist(rap_vals[[2]]))
-  veg_cover <- 0.9 * sum(unlist(rap_vals[[1]]))
+  #veg_cover <- 0.9 * sum(unlist(rap_vals[[1]]))
   return(veg_cover)
 }
-
-
-
-
-
-
-
-
-
 
 #===============================================================================
 #=========lateral velocity fluctuation (sigma_v) sensitivity test===============

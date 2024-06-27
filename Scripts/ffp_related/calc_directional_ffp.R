@@ -132,6 +132,11 @@ avg_gpp <- avg_gpp %>%
 gpp_cover_df <- inner_join(rap_ffp_df, avg_gpp, by = "direction")
 
 plot(gpp_cover_df$veg_cover, gpp_cover_df$avg_gpp)
-par(mfrow = c(2, 1))
+par(mfrow = c(1, 1))
 plot(gpp_cover_df$direction, gpp_cover_df$avg_gpp)
 plot(gpp_cover_df$direction, gpp_cover_df$veg_cover)
+
+
+df_sub <- gpp_cover_df %>%
+  filter(direction %in% 170:270)
+plot(df_sub$veg_cover, df_sub$avg_gpp)
