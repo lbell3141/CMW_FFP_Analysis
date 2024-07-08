@@ -8,6 +8,7 @@ install.packages("./spatialfil_0.15.tar.gz", repos = NULL, type = "source")
 library(terra)
 library(dplyr)
 library(lubridate)
+library(raster)
 
 #===============================================================================
 #======================calculate directional footprint==========================
@@ -45,10 +46,18 @@ ffp_list <- lapply(split_dat, calc_ffp)
 #load ffps and RAP data
 ffp_list <- readRDS("./Data/calcd_ffp_list.rds")
 rap <- rast("./Data/RAP/avg_rast.tif")
-dif_rap <- rast("./Data/RAP/dif_rast.tif")
+#dif_rap <- rast("./Data/RAP/dif_rast.tif")
+rast <- raster("./Data/Planet/AUG2018/avg_NDVI_aug2018.tif")
 
+#reproject:
+
+proj_ext <- extent(-110.18013, -110.175952, 31.662064, 31.665691)
+extent(rast) <- proj_ext
+crs(rast) <- crs(rap)
+rast <- rast(rast)    
+#writeRaster(rast, "./Data/Planet/AUG2018/reprodNDVIrast.tif")
 #increase raster resolution
-rap_resamp <- disagg(rap, fact = 10)
+rap_resamp <- disagg(dif_rap, fact = 10)
 #avg rap rast has woody and herbaceous layers
 woody <- rap_resamp[[2]]
 herb <- rap_resamp[[1]]
@@ -65,7 +74,7 @@ for (i in seq_along(ffp_list)) {
 #apply function to lists and loaded RAP data:
 rap_ffp_list <- list()
 for (i in seq_along(x_list)) {
-  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], woody)
+  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], rast)
 }
 
 #convert to df with correct WD
@@ -102,7 +111,7 @@ CM_dat <- dat %>%
   ) %>%
   #filter(test >= -15.5)%>%
   #filter(USTAR > 0.2)%>%
-  select(yyyy, mm, day, HH_UTC, MM, wind_dir, GPP_PI)%>%
+  dplyr::select(yyyy, mm, day, HH_UTC, MM, wind_dir, GPP_PI)%>%
   filter(across(everything(), ~ . != "NA"))%>%
   filter(HH_UTC %in% 8:17)
 
@@ -132,7 +141,7 @@ avg_gpp <- avg_gpp %>%
 gpp_cover_df <- inner_join(rap_ffp_df, avg_gpp, by = "direction")
 
 plot(gpp_cover_df$veg_cover, gpp_cover_df$avg_gpp)
-par(mfrow = c(1, 1))
+par(mfrow = c(2, 1))
 plot(gpp_cover_df$direction, gpp_cover_df$avg_gpp)
 plot(gpp_cover_df$direction, gpp_cover_df$veg_cover)
 
