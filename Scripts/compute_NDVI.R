@@ -52,8 +52,6 @@ for (i in 1:nrow(PSStifs)){
 }
 
 #calculate average value of the raster stack per pixel
-
-
 #rasters aren't aligned...
 align_raster <- function(to_be_aligned, ref_for_alignment) {
   resample(to_be_aligned, ref_for_alignment, method = "bilinear")
