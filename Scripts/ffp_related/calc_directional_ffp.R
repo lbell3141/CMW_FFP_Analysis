@@ -57,7 +57,7 @@ crs(rast) <- crs(rap)
 rast <- rast(rast)    
 #writeRaster(rast, "./Data/Planet/AUG2018/reprodNDVIrast.tif")
 #increase raster resolution
-rap_resamp <- disagg(dif_rap, fact = 10)
+rap_resamp <- disagg(rap, fact = 10)
 #avg rap rast has woody and herbaceous layers
 woody <- rap_resamp[[2]]
 herb <- rap_resamp[[1]]
@@ -74,7 +74,7 @@ for (i in seq_along(ffp_list)) {
 #apply function to lists and loaded RAP data:
 rap_ffp_list <- list()
 for (i in seq_along(x_list)) {
-  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], rast)
+  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], herb)
 }
 
 #convert to df with correct WD
