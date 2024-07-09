@@ -22,7 +22,7 @@ szn_dat <- CM_dat %>%
 #add pi/2 to start from compass 0 instead of standard coord plane 0
 direction_to_angle <- function(direction) {
   directions <- c("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
-  angles <- c(0+(pi/2), pi/8+(pi/2), pi/4+(pi/2), 3*pi/8+(pi/2), pi/2+(pi/2), 5*pi/8+(pi/2), 3*pi/4+(pi/2), 7*pi/8+(pi/2), pi+(pi/2), 9*pi/8+(pi/2), 5*pi/4+(pi/2), 11*pi/8+(pi/2), 3*pi/2+(pi/2), 13*pi/8+(pi/2), 7*pi/4+(pi/2), 15*pi/8+(pi/2))
+  angles <- c(pi/2, 3*pi/8, pi/4, pi/8, 0, -pi/8, -pi/4, -3*pi/8, 3*pi/2, 5*pi/4, 7*pi/8, 5.8*pi/4, pi, 5*pi/8, 7*pi/8, 5*pi/8)
   angle <- angles[match(direction, directions)]
   return(angle)
 }
