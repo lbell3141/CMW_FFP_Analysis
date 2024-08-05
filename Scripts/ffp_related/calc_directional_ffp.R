@@ -48,7 +48,7 @@ ffp_list <- readRDS("./Data/calcd_ffp_list.rds")
 rap <- rast("./Data/RAP/avg_rast.tif")
 #dif_rap <- rast("./Data/RAP/dif_rast.tif")
 rast <- raster("./Data/Planet/AUG2018/avg_NDVI_aug2018.tif")
-
+canopy <- rast("./Data/Image_classification/canopy.tif")
 #reproject:
 
 proj_ext <- extent(-110.18013, -110.175952, 31.662064, 31.665691)
@@ -74,7 +74,7 @@ for (i in seq_along(ffp_list)) {
 #apply function to lists and loaded RAP data:
 rap_ffp_list <- list()
 for (i in seq_along(x_list)) {
-  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], herb)
+  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], canopy)
 }
 
 #convert to df with correct WD
@@ -110,6 +110,7 @@ CM_dat <- dat %>%
     test = zm/ol
   ) %>%
   #filter(test >= -15.5)%>%
+  #USTAR < 0.2 is already gapfilled in for GPP (FC = raw carbon flux not corrected)
   #filter(USTAR > 0.2)%>%
   dplyr::select(yyyy, mm, day, HH_UTC, MM, wind_dir, GPP_PI)%>%
   filter(across(everything(), ~ . != "NA"))%>%
@@ -140,12 +141,16 @@ avg_gpp <- avg_gpp %>%
   arrange(direction)
 gpp_cover_df <- inner_join(rap_ffp_df, avg_gpp, by = "direction")
 
-plot(gpp_cover_df$veg_cover, gpp_cover_df$avg_gpp)
-par(mfrow = c(2, 1))
-plot(gpp_cover_df$direction, gpp_cover_df$avg_gpp)
-plot(gpp_cover_df$direction, gpp_cover_df$veg_cover)
+plot(gpp_cover_df$veg_cover, gpp_cover_df$avg_gpp, xlab = "Cover", ylab = "GPP")
+par(mfrow = c(1, 1))
+plot(gpp_cover_df$direction, gpp_cover_df$avg_gpp, xlab = "Wind Direction", ylab = "GPP")
+plot(gpp_cover_df$direction, gpp_cover_df$veg_cover, xlab = "Wind Direction", ylab = "Canopy Cover")
 
 
 df_sub <- gpp_cover_df %>%
   filter(direction %in% 170:270)
 plot(df_sub$veg_cover, df_sub$avg_gpp)
+
+#===============================================================================
+#=====================GPP ~ season, cover, diurnality (?)=======================
+#===============================================================================
