@@ -34,25 +34,3 @@ ggplot(data = p_gf, mapping = aes(as.numeric(dir_group), PERCENT_GF)) +
   geom_bar(stat = "identity") + 
   theme_minimal() +
   labs(x = "Wind Direction", y = "Percentage of Gapfilled Observations")
-  
-  
-  
-  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
