@@ -8,8 +8,8 @@ library(stringr)
 #pathtoNDVIraster1 <- "./data/hm_NDVI_Nov20.tif"
 #pathtoNDVIraster2 <- "./data/hm_NDVI_Sept23.tif"
 
-pathtoPlanetRasters <- "C:/Users/lindseybell/OneDrive - University of Arizona/Desktop/CMW_FFP_Analysis/Data/Planet/AUG2018/Raw/PSScene"
-pathtoNDVIRasters <- "./Data/Planet/AUG2018/NDVI"
+pathtoPlanetRasters <- "C:/Users/lindseybell/OneDrive - University of Arizona/Desktop/CMW_FFP_Analysis/Data/Planet/JUN2024/Raw/PSScene"
+pathtoNDVIRasters <- "./Data/Planet/JUN2024/NDVI"
 #create raster stack for planetscope scene rasters from jan 2020 to jan 2021
 #identify file pattern to pull only tif files from the Planet output folder
 #allRastFiles <- list.files(pathtoPlanetRasters, pattern = "^\\d{8}_\\d{6}_\\d{4}_3B_AnalyticMS_SR_clip\\.tif$", full.names = TRUE)
@@ -58,7 +58,7 @@ align_raster <- function(to_be_aligned, ref_for_alignment) {
 }
 
 #make list of NDVI rasts to loop through with the first raster to be referenced for alignment
-rasts <- list.files(path = "./Data/Planet/AUG2018/NDVI", pattern = "\\.tif$", full.names = TRUE)
+rasts <- list.files(path = "./Data/Planet/JUN2024/NDVI", pattern = "\\.tif$", full.names = TRUE)
 ref_rast <- rast(rasts[1])
 #output list
 clean_rasts <- list()
@@ -71,12 +71,11 @@ for (i in rasts) {
 }
 
 #stack processed and aligned rasters and calculate the mean per layer/pixel
-stacked_rast <- rast(aligned_rasters)
+stacked_rast <- rast(clean_rasts)
 avg_raster <- mean(stacked_rast)
 
 #save rast for use in ffp calc
-writeRaster(mean_raster, filename = "./Data/Planet/AUG2018/avg_NDVI_aug2018.tif", overwrite = TRUE)
-
+writeRaster(avg_raster, filename = "./Data/Planet/JUN2024/avg_NDVI_JUN2024.tif", overwrite = TRUE)
 
 #=====for single raster=========================================================
 skysat_rast <- rast(pathtoPlanetRaster1)

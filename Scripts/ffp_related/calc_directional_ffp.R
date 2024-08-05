@@ -47,15 +47,16 @@ ffp_list <- lapply(split_dat, calc_ffp)
 ffp_list <- readRDS("./Data/calcd_ffp_list.rds")
 rap <- rast("./Data/RAP/avg_rast.tif")
 #dif_rap <- rast("./Data/RAP/dif_rast.tif")
-rast <- raster("./Data/Planet/AUG2018/avg_NDVI_aug2018.tif")
+rast <- raster("./Data/Planet/JUN2024/reprodNDVIrast.tif")
 canopy <- rast("./Data/Image_classification/canopy.tif")
 #reproject:
 
 proj_ext <- extent(-110.18013, -110.175952, 31.662064, 31.665691)
 extent(rast) <- proj_ext
 crs(rast) <- crs(rap)
-rast <- rast(rast)    
-#writeRaster(rast, "./Data/Planet/AUG2018/reprodNDVIrast.tif")
+rast <- rast(rast)  
+
+#writeRaster(rast, "./Data/Planet/JUN2024/reprodNDVIrast.tif")
 #increase raster resolution
 rap_resamp <- disagg(rap, fact = 10)
 #avg rap rast has woody and herbaceous layers
@@ -74,7 +75,7 @@ for (i in seq_along(ffp_list)) {
 #apply function to lists and loaded RAP data:
 rap_ffp_list <- list()
 for (i in seq_along(x_list)) {
-  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], canopy)
+  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], rast)
 }
 
 #convert to df with correct WD
