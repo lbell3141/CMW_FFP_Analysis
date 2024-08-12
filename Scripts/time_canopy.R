@@ -4,9 +4,12 @@
 
 library(lubridate)
 library(dplyr)
+library(tidyr)
+library(purrr)
 library(terra)
 library(ggplot2)
-
+library(viridis)
+library(patchwork)
 #===============================================================================
 #=================================load flux data================================
 #===============================================================================
@@ -47,27 +50,35 @@ for (i in seq_along(split_dat)) {
 }
 dir_dat <- do.call(rbind, split_dat)
 
-#make dataframes for dry mature, wet mature, and dormant phenophases
-Mar_df <- dir_dat %>%
-  filter(yyyy %in% 2015:2019)%>%
-  filter(mm == 3)%>%
-  group_by(dir_group)%>%
-  summarize(avg_gpp_mar = mean(gpp, na.rm = T))%>%
-  arrange(as.numeric(dir_group))
-June_df <- dir_dat %>%
-  filter(yyyy %in% 2015:2019)%>%
-  filter(mm == 6)%>%
-  group_by(dir_group)%>%
-  summarize(avg_gpp_jun = mean(gpp, na.rm = T))%>%
-  arrange(as.numeric(dir_group))
-Aug_df <- dir_dat %>%
-  filter(yyyy %in% 2015:2019)%>%
-  filter(mm == 8)%>%
-  group_by(dir_group)%>%
-  summarize(avg_gpp_aug = mean(gpp, na.rm = T))%>%
-  arrange(as.numeric(dir_group))
-gpp_df <- left_join(Mar_df, June_df, by = "dir_group")
-gpp_df <- left_join(gpp_df, Aug_df, by = "dir_group")
+#make a df for avg monthly gpp
+#prep to make a list of month dfs to loop through
+months <- seq(1,12,1)
+month_names <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec") 
+#empty list for dfs
+gpp_list <- list()
+
+#loop through each month number; 
+for (i in seq_along(months)) {
+  month <- months[i]
+  month_name <- month_names[i]
+  
+  #calc avg gpp by month (across 5 years) by direction
+  temporary_df <- dir_dat %>%
+    filter(yyyy %in% 2015:2019) %>%
+    filter(mm == month) %>%
+    group_by(dir_group) %>%
+    summarize(avg_gpp = mean(gpp, na.rm = TRUE)) %>%
+    arrange(as.numeric(dir_group))
+  
+  #add month name to df
+  colnames(temporary_df)[colnames(temporary_df) == "avg_gpp"] <- paste0("avg_gpp_", month_name)
+  
+  #add temp dfs to list 
+  gpp_list[[i]] <- temporary_df
+}
+
+#stitch dfs from list together; make directions numeric to avoid plotting issues
+gpp_df <- reduce(gpp_list, left_join, by = "dir_group")
 gpp_df <- gpp_df %>%
   mutate(dir_group = as.numeric(dir_group))
 #===============================================================================
@@ -111,8 +122,10 @@ rap_ffp_df <- rap_ffp_df%>%
 #prepare plot dataframe; combine gpp and canopy cover
 plot_df <- left_join(rap_ffp_df, gpp_df, by = "dir_group")
 plot_df <- plot_df %>%
-  mutate(canopy_cover = (80 - 100*canopy_cover))
+  mutate(canopy_cover = (100*canopy_cover - 55))
 #begin plotting:
+variable_fill = plot_df$avg_gpp_Mar
+name = "March GPP"
 #make custom grid
 grid <- ggplot(plot_df) +  
   geom_hline(
@@ -121,18 +134,20 @@ grid <- ggplot(plot_df) +
     color = "lightgrey"
   )
 
+#make standard bar plot before wrapping in to a circle
 bar_plot <- grid +
   geom_col(
     aes(
       x = dir_group,
       y = canopy_cover,
-      fill = avg_gpp_mar
+      fill = variable_fill
     ),
     position = "dodge2",
-    show.legend = F,
-    alpha = 0.9
+    show.legend = T,
+    #alpha = 0.9
   )
 
+#wrap bar plot into circle
 circ_plot <- bar_plot +
   geom_segment(
     aes(
@@ -145,39 +160,87 @@ circ_plot <- bar_plot +
     color = "gray12"
   ) + 
   coord_polar()
-circ_plot
-
-
+#circ_plot
 
 #additional aesthetic changes to be made (from tutorial)
 with_aes <- circ_plot +
-  # Make the guide for the fill discrete
+  scale_fill_viridis_c(option = "viridis",
+                       name = name) +
   guides(
     fill = guide_colorsteps(
       barwidth = 15, barheight = .5, title.position = "top", title.hjust = .5
     ) # For for legend guide
   ) +
   theme(
-    # Remove axis ticks and text
-    axis.title = element_blank(), # Removing the x axis title
-    axis.ticks = element_blank(), # Removing the x axis ticks
-    axis.text.y = element_blank(), # Removing the y axis text
-    # Use gray text for the Treatment names
-    axis.text.x = element_text(color = "gray12", size = 12),  #Making the text grey to look asthetic
-    # Move the legend to the bottom
+    axis.title = element_blank(), 
+    axis.ticks = element_blank(), 
+    axis.text.y = element_blank(), 
+    axis.text.x = element_text(color = "gray12", size = 12),  
     legend.position = "bottom",
-    
-    # Set default color and font family for the text
     text = element_text(color = "gray12", family = "Bell MT"),
-    
-    
-    # Make the background white and remove extra grid lines
     panel.background = element_rect(fill = "white", color = "white"),
     panel.grid = element_blank(),
     panel.grid.major.x = element_blank()
   )
 
 with_aes
+
+#===============================================================================
+#=================================plotting loop=================================
+#===============================================================================
+#create a function for making circle plots 
+create_plot <- function(month_col, month_name) {
+  ggplot(plot_df) +  
+    geom_hline(
+      aes(yintercept = y), 
+      data.frame(y = c(0, 20)), 
+      color = "lightgrey"
+    ) +
+    geom_col(
+      aes_string(
+        x = "dir_group",
+        y = "canopy_cover",
+        fill = month_col  
+      ),
+      position = "dodge2",
+      show.legend = T
+    ) +
+    geom_segment(
+      aes(
+        x = dir_group,
+        y = canopy_cover,
+        xend = dir_group, 
+        yend = 20
+      ),
+      linetype = "dashed",
+      color = "gray12"
+    ) + 
+    coord_polar() +
+    scale_fill_viridis_c(option = "viridis", name = "GPP") +
+    theme(
+      axis.title = element_blank(), 
+      axis.ticks = element_blank(), 
+      axis.text.y = element_blank(), 
+      axis.text.x = element_text(color = "gray12", size = 12),  
+      legend.position = "bottom",
+      text = element_text(color = "gray12", family = "Bell MT"),
+      panel.background = element_rect(fill = "white", color = "white"),
+      panel.grid = element_blank(),
+      panel.grid.major.x = element_blank()
+    ) +
+    labs(title = month_name) 
+}
+
+#make a list of column names and real month names (for plotting below)
+month_columns <- paste0("avg_gpp_", month.abb)
+month_names <- month.name 
+
+#use plotting function and generated month names to create a list of plots
+plots <- Map(create_plot, month_columns, month_names)
+#use patchwork::wrap_plots to put plots in same window
+final_plot <- wrap_plots(plots, ncol = 6) 
+
+
 #===============================================================================
 #==========================amending gapfilled values============================
 #===============================================================================
