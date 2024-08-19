@@ -85,3 +85,62 @@ writeRaster(NDVIrast, pathtoNDVIraster1, overwrite = TRUE)
 skysat_rast <- rast(pathtoPlanetRaster2)
 NDVIrast <- (skysat_rast[[4]] - skysat_rast[[3]]) / (skysat_rast[[4]] + skysat_rast[[3]])
 writeRaster(NDVIrast, pathtoNDVIraster2, overwrite = TRUE)
+
+
+#===============================================================================
+#for multiple rasters (1/month from 2016 to 2019)
+#need to 1) calculate NDVI 2) find monthly average NDVI across given years 
+
+#load paths to input and output:
+pathtodownloads <- "./Data/Planet/2016to2019planetCOGs/PSScene"
+pathtoNDVIoutput <- "./Data/Planet/2016to2019planetCOGs/NDVI"
+
+#find files of interest in folder (ie raster files with RBGNIR data)
+find_files <- function(folder) {
+  #list all files in folder, set pattern, create object with files that match the pattern
+  all_files <- list.files(folder, full.names = T)
+  pattern <- "AnalyticMS_clip_file_format"
+  files_oi <- all_files[str_detect(all_files, pattern)]
+  return(files_oi)
+}
+
+#apply function to input folder
+PSStifs <- find_files(pathtodownloads)
+
+#use pattern to create a dataframe with tifs and tif dates
+PSStifs <- tibble(filePath = PSStifs) %>%
+  mutate(fileName = basename(filePath),
+         year = str_extract(fileName, "\\d{4}"),
+         month = str_sub(fileName, start = 5, end = 6),
+         day = str_sub(fileName, start = 7, end = 8),
+         date = make_date(year, month, day)) %>%
+  arrange(date)
+
+
+#compute NDVI; save NDVI to list 
+NDVI_list <- list()
+for (i in 1:nrow(PSStifs)){
+  #reading in raster
+  PSSrast <- rast(PSStifs$filePath[i])
+  #calculating NDVI
+  NDVI_list[[i]] <- (PSSrast[[4]] - PSSrast[[3]]) / (PSSrast[[4]] + PSSrast[[3]])
+}
+
+avg_mm_NDVI <- list()
+
+#loop through months and calc monthly avg NDVI
+for (i in 1:12) {
+  #specify 0 in month numbers/names
+  mm_NDVI <- NDVI_list[PSStifs$month == sprintf("%02d", i)]
+  #stack months of same digits from above
+  NDVI_stack <- rast(mm_NDVI)
+  #find avg values for each group and add to list
+  avg_mm_NDVI[[i]] <- mean(NDVI_stack, na.rm = TRUE)
+}
+
+# Save the average NDVI rasters to a folder
+for (i in 1:12) {
+    output_file <- file.path(pathtoNDVIoutput, paste0("avg_NDVI_", sprintf("%02d", i), ".tif"))
+    writeRaster(avg_mm_NDVI[[i]], output_file, overwrite = TRUE)
+  }
+
