@@ -7,7 +7,6 @@
 library(fields)
 library(EBImage)
 install.packages("./spatialfil_0.15.tar.gz", repos = NULL, type = "source")
-library(ggmap)
 library(terra)
 
 #define file path
