@@ -5,6 +5,8 @@ library(lubridate)
 library(dplyr)
 library(plantecophys)
 
+library(tidyr)
+library(purrr)
 library(ggplot2)
 library(viridis)
 library(patchwork)
@@ -12,6 +14,8 @@ library(patchwork)
 #load flux data
 dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv",  na.strings = "-9999", header = TRUE, sep = ",", skip = 2)
 dat_file$TIMESTAMP_START <- ymd_hm(as.character(dat_file$TIMESTAMP_START))
+#and canopy cover data for combining below
+month_cc_df <- readRDS("./Data/monthly_directional_ffps/month_cc.RDS")
 
 #plotting normalized values, so create a function for zscores: 
 calc_z_score <- function(x) {
@@ -49,7 +53,8 @@ dat_voi<- dat_file %>%
     VPD_mzs = calc_z_score(VPD),
     ppfd_mzs = calc_z_score(ppfd),
     le_mzs = calc_z_score(le),
-    swc_mzs = calc_z_score(swc)
+    swc_mzs = calc_z_score(swc),
+    gpp_mzs = calc_z_score(gpp)
   ) %>%
   ungroup()
 
@@ -69,36 +74,77 @@ dir_dat_avg <- dir_dat %>%
   summarise_all(~mean(.x, na.rm = T)) %>%
   mutate(dir_group = as.numeric(dir_group))%>%
   arrange(mm, dir_group)
-dir_dat_avg = dir_dat_avg[,c(1:2,19:25)]
+dir_dat_avg = dir_dat_avg[,c(1:2,19:26)]
+dir_dat_avg <- dir_dat_avg %>%
+  filter(dir_group != 50)%>%
+  rename(month = mm)%>%
+  rename(direction = dir_group)
 
+#add canopy data from monthly_canopy_cover.R
+plot_df <-inner_join(dir_dat_avg, month_cc_df, by = c("month", "direction"))
+plot_df <- plot_df%>%
+  rename(canopy_cover = veg_cover) %>%
+  mutate(canopy_cover = canopy_cover * 100 - 50)
+
+#need to manipulate entire structure of dataframe (so super cool!) to have month-variables instead of separate columns
+month_split <- split(plot_df, plot_df$month)
+#add month abbreviations to all variable column names
+month_abbr <- month.abb
+
+#loop through and rename
+month_split <- lapply(1:12, function(i) {
+  df <- month_split[[i]]
+  
+  #create new column names for variables, but don't rename direction or month column
+  new_colnames <- names(df)
+  new_colnames <- ifelse(new_colnames != c("month", "direction"), 
+                         paste0(month_abbr[i], "_", new_colnames),
+                         new_colnames)
+  
+  #apply names
+  df <- df %>%
+    rename_with(~ new_colnames)
+  
+  return(df)
+})
+
+#remove month column
+for (i in seq_along(month_split)){
+  month_split[[i]] <- month_split[[i]] %>%
+    ungroup() %>%
+    select(-month)
+}
+
+#combine dataframes in list to make a single plotting frame
+plot_df <- reduce(month_split, full_join, by = "direction")
+
+#======================================================
 #=====================plotting=========================
-#clean up plot_df
-#add canopy cover by month 
-
-
-#load function from time_canopy.R: 
-create_plot <- function(month_col, month_name) {
+#======================================================
+create_plot <- function(month_abbr, month_full, variable) {
+  variable_col <- paste0(month_abbr, "_", variable)
+  canopy_cover_col <- paste0(month_abbr, "_canopy_cover")
+  
   ggplot(plot_df) +  
     geom_hline(
       aes(yintercept = y), 
-      data.frame(y = c(0, 20)), 
+      data.frame(y = c(0, 30)), 
       color = "lightgrey"
     ) +
     geom_col(
       aes_string(
-        x = "dir_group",
-        y = "canopy_cover",
-        fill = month_col  
+        x = "direction",
+        y = canopy_cover_col,
+        fill = variable_col  
       ),
-      position = "dodge2",
-      show.legend = T
+      position = "dodge2"
     ) +
     geom_segment(
-      aes(
-        x = dir_group,
-        y = canopy_cover,
-        xend = dir_group, 
-        yend = 20
+      aes_string(
+        x = "direction",
+        y = canopy_cover_col,
+        xend = "direction", 
+        yend = 30
       ),
       linetype = "dashed",
       color = "gray12"
@@ -116,14 +162,22 @@ create_plot <- function(month_col, month_name) {
       panel.grid = element_blank(),
       panel.grid.major.x = element_blank()
     ) +
-    labs(title = month_name) 
+    labs(title = month_full) 
 }
 
-#make a list of column names and real month names (for plotting below)
-month_columns <- paste0("avg_gpp_", month.abb)
-month_names <- month.name 
+#abbreviations for pasting onto variable names
+#full month names for plot titles
+month_abbr <- month.abb
+month_full <- month.name
 
-#use plotting function and generated month names to create a list of plots
-plots <- Map(create_plot, month_columns, month_names)
-#use patchwork::wrap_plots to put plots in same window
-final_plot <- wrap_plots(plots, ncol = 6) 
+#define variable (didn't want to write a nested loop, so produce plots one at a time)
+variable <- "gpp_mzs"
+
+#create individual plots with loop
+plots <- Map(create_plot, month_abbr, month_full, MoreArgs = list(variable = variable))
+
+#combine plots into a single frame
+final_plot <- wrap_plots(plots, ncol = 6) & 
+  theme(legend.position = "bottom")
+final_plot
+
