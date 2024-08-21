@@ -64,13 +64,14 @@ combd_dat <- merge(site_dat, proc_dat, by = "TIMESTAMP_END")
 #===============================================================================
 #============================prep data for ffp calc=============================
 #===============================================================================
+combd_dat <- read.csv("./Data/combined_CMdata.csv")
 #format df for ffp calc
 meas_h <- 14
 d <- (2/3) * meas_h
 bound_h <- 1000
 
 all_clim_dat <- combd_dat %>%
-  mutate(
+  summarize(
     yyyy = year(TIMESTAMP_END),
     mm = month(TIMESTAMP_END),
     day = day(TIMESTAMP_END),
@@ -84,14 +85,19 @@ all_clim_dat <- combd_dat %>%
     sigmav = sigma_v,
     ustar = USTAR,
     wind_dir = WD_1_1_1,
-    test = zm/ol
-  ) %>%
+    test = zm/ol)
+all_clim_dat <- all_clim_dat%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
-  select(yyyy, mm, day, HH_UTC, MM, zm, z0, umean, h, ol, sigmav, ustar, wind_dir)%>%
   filter(across(everything(), ~ . != "NA"))%>%
-  filter(HH_UTC %in% 8:17)
+  filter(HH_UTC %in% 8:17)%>%
+  filter(yyyy %in% 2015:2019)
 
 #split into separate wind directions bins of 10 degrees
 deg_int <- seq(0, 360, by = 10)
 split_dat <- split(all_clim_dat, cut(all_clim_dat$wind_dir, deg_int, include.lowest = TRUE, labels = FALSE))
+
+#filter by season/month for ffp input data
+dec_split_dat <- lapply(split_dat, function(df) {
+  df %>% filter(mm == 12)
+})
