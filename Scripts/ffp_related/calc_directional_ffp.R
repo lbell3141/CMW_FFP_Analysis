@@ -34,10 +34,10 @@ calc_ffp <- function(x) {
 }
 
 #use new function on list; calc ffp and store in list
-ffp_list <- lapply(split_dat, calc_ffp)
+ffp_list <- lapply(dec_split_dat, calc_ffp)
 
 #write list of calculations to data:
-#saveRDS(ffp_list, file = "calcd_ffp_list.rds")
+saveRDS(ffp_list, file = "dec_calcd_ffp_list.rds")
 #to read use readRDS()
 
 #===============================================================================
