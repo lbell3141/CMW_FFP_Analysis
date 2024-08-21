@@ -8,23 +8,42 @@ library(fields)
 library(EBImage)
 install.packages("./spatialfil_0.15.tar.gz", repos = NULL, type = "source")
 library(terra)
+library(dplyr)
 
 #define file path
-PathToData <- "./Path/to/your/data.csv"
+PathToData <- "./testing_multdays.csv"
 
 #load in prepared csv
 footprint_data <- read.csv(PathToData)
 
+data_cleaned <- footprint_data %>%
+  mutate(test = zm / L) %>%
+  filter(test >= -15.5)%>%
+  filter(u_star > 0.2)%>%
+  filter(HH %in% 8:17)%>%
+  #mutate(z0 = NaN)%>%
+  filter(if_any(everything(), ~ . != "NA"))%>%
+  mutate(
+    zm = as.numeric(zm),
+    L = as.numeric(L),
+    sigma_v = as.numeric(sigma_v),
+    u_star = as.numeric(u_star),
+    wind_dir = as.numeric(wind_dir)
+  )
+
+footprint_data = data_cleaned
+
 #use function to calculate footprint
 footprint_output <- calc_footprint_FFP_climatology(
   zm = footprint_data$zm, #instrument height above displacement height (displacement height is usually assumed to be 2/3 * canopy height when unknown)
-  z0 = footprint_data$z0, #roughness length; I usually leave as NaN
-  umean = footprint_data$umean, #average wind speed
-  h = footprint_data$h, #boundary layer height. You can calculate this using an equation in Kljun's paper, but I usually just assume stable when unknown (h = 1000)
-  ol = footprint_data$ol, #Obukhov length
-  sigmav = footprint_data$sigmav, #sd of lateral wind speed fluctuation
-  ustar = footprint_data$ustar, #friction velocity
+  z0 = NaN, #roughness length; I usually leave as NaN
+  umean = footprint_data$u_mean, #average wind speed
+  h = 1000, #boundary layer height. You can calculate this using an equation in Kljun's paper, but I usually just assume stable when unknown (h = 1000)
+  ol = footprint_data$L, #Obukhov length
+  sigmav = footprint_data$sigma_v, #sd of lateral wind speed fluctuation
+  ustar = footprint_data$u_star, #friction velocity
   wind_dir = footprint_data$wind_dir, #wind direction in degrees
+ 
   domain = c(-1000, 1000, -1000, 1000), #plotting window. The footprint is calculated in meters from tower, so make sure your window is big enough to plot your full footprint
   #dx/dy refer to the resolution of the grid cells used to calculate footprint contribution. Default is 2m. If you have a small fooprint, you may wish to change for a finer scale analysis
   #or, to make the calculations run faster, you could decrease the resolution
