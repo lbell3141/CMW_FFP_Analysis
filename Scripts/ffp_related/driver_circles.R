@@ -5,17 +5,22 @@ library(lubridate)
 library(dplyr)
 library(plantecophys)
 
+library(stringr)
 library(tidyr)
 library(purrr)
 library(ggplot2)
 library(viridis)
 library(patchwork)
 
+#load avg raster data made in geospatial_mm_ffp.R
+PathToMmDat <- "./Data/monthly_directional_ffps/raster_dataframes/FullRasterFrame.rds"
+mm_dat <- readRDS(PathToMmDat)
+
 #load flux data
 dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv",  na.strings = "-9999", header = TRUE, sep = ",", skip = 2)
 dat_file$TIMESTAMP_START <- ymd_hm(as.character(dat_file$TIMESTAMP_START))
 #and canopy cover data for combining below
-month_cc_df <- readRDS("./Data/monthly_directional_ffps/month_cc.RDS")
+month_cc_df <- readRDS("./Data/monthly_directional_ffps/raster_dataframes/month_cc.RDS")
 
 #plotting normalized values, so create a function for zscores: 
 calc_z_score <- function(x) {
@@ -118,17 +123,23 @@ for (i in seq_along(month_split)){
 #combine dataframes in list to make a single plotting frame
 plot_df <- reduce(month_split, full_join, by = "direction")
 
+#combine geospatial df with plot frame
+colnames(mm_dat) <- str_replace_all(colnames(mm_dat), "^\\w{3}", str_to_title)
+mm_dat <- mm_dat %>%
+  rename(direction = Direction)
+plot_df <- full_join(plot_df, mm_dat, by = "direction")
+
 #======================================================
 #=====================plotting=========================
 #======================================================
 create_plot <- function(month_abbr, month_full, variable) {
   variable_col <- paste0(month_abbr, "_", variable)
-  canopy_cover_col <- paste0(month_abbr, "_canopy_cover")
+  canopy_cover_col <- paste0(month_abbr, "_CHM")
   
   ggplot(plot_df) +  
     geom_hline(
       aes(yintercept = y), 
-      data.frame(y = c(0, 30)), 
+      data.frame(y = c(3, 10)), 
       color = "lightgrey"
     ) +
     geom_col(
@@ -144,7 +155,7 @@ create_plot <- function(month_abbr, month_full, variable) {
         x = "direction",
         y = canopy_cover_col,
         xend = "direction", 
-        yend = 30
+        yend = 10
       ),
       linetype = "dashed",
       color = "gray12"
