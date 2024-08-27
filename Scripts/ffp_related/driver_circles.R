@@ -27,6 +27,8 @@ calc_z_score <- function(x) {
   return((x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE))
 }
 
+
+
 #create dataframe
 dat_voi<- dat_file %>%
   summarize(
@@ -63,6 +65,30 @@ dat_voi<- dat_file %>%
   ) %>%
   ungroup()
 
+
+#create dataframe
+dat_voi<- dat_file %>%
+  summarize(
+    yyyy = year(TIMESTAMP_START),
+    mm = month(TIMESTAMP_START),
+    doy = yday(TIMESTAMP_START),
+    day = day(TIMESTAMP_START),
+    HH_UTC = hour(TIMESTAMP_START),
+    MM = minute(TIMESTAMP_START),
+    wind_sp = WS_1_1_1,
+    temp_atmos = TA_1_1_1,
+    u_star = USTAR,
+    wind_dir = WD_1_1_1,
+    gpp = GPP_PI,
+    precip = P,
+    rel_h = RH_1_1_1,
+    VPD = RHtoVPD(dat_file$RH_1_1_1, dat_file$TA_1_1_1, dat_file$PA),
+    ppfd = PPFD_IN_PI_F,
+    le = LE,
+    swc = SWC_PI_1_1_A
+  ) %>%
+  filter(HH_UTC >= 8 & HH_UTC <= 17)
+
 #split into direction windows
 deg_int <- seq(10, 350, by = 10)
 deg_int_real <- deg_int
@@ -79,7 +105,7 @@ dir_dat_avg <- dir_dat %>%
   summarise_all(~mean(.x, na.rm = T)) %>%
   mutate(dir_group = as.numeric(dir_group))%>%
   arrange(mm, dir_group)
-dir_dat_avg = dir_dat_avg[,c(1:2,19:26)]
+dir_dat_avg = dir_dat_avg[,c(1:2,8:18)]
 dir_dat_avg <- dir_dat_avg %>%
   filter(dir_group != 50)%>%
   rename(month = mm)%>%
