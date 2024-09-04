@@ -1,6 +1,9 @@
 library(dplyr)
+library(purrr)
 library(ggplot2)
 library(boot)
+library(tidyr)
+library(ggpubr)
 
 #simulated annual sum gpp 
 
@@ -37,9 +40,9 @@ phenophase_periods <- list(
 avg_gpp <- avg_gpp %>%
   mutate(phenophase = case_when(
     month %in% phenophase_periods$dormancy ~ 'Dormancy',
-    month %in% phenophase_periods$green_up ~ 'Green Up',
-    month %in% phenophase_periods$dry_mature ~ 'Dry Mature',
-    month %in% phenophase_periods$wet_mature ~ 'Wet Mature',
+    month %in% phenophase_periods$green_up ~ 'Green_Up',
+    month %in% phenophase_periods$dry_mature ~ 'Dry_Mature',
+    month %in% phenophase_periods$wet_mature ~ 'Wet_Mature',
     month %in% phenophase_periods$senescence ~ 'Senescence'
   ))
 
@@ -61,9 +64,9 @@ avg_gpp_sum <- avg_gpp_sum %>%
 #colors for phenophases
 phenophase_colors <- c(
   'Dormancy' = '#1f77b4', 
-  'Green Up' = '#2ca02c',
-  'Dry Mature' = '#2e8b57',
-  'Wet Mature' = 'darkgreen',
+  'Green_Up' = '#2ca02c',
+  'Dry_Mature' = '#2e8b57',
+  'Wet_Mature' = 'darkgreen',
   'Senescence' = '#17becf'
   )
 
@@ -73,9 +76,13 @@ avg_gpp_sum <- avg_gpp_sum %>%
 
 pheno_bar <- ggplot(avg_gpp_sum, aes(x = direction, y = phenophase_gpp, fill = phenophase)) +
   geom_bar(stat = "identity") +
-  labs(x = "Direction", y = "Total Annual GPP (scaled monthly averages)", fill = "Phenophase") +
+  labs(x = "Direction", y = "Total Annual GPP", fill = "Phenophase") +
   scale_fill_manual(values = phenophase_colors) +
-  theme_minimal()
+  theme_minimal() 
+  
+  #theme(legend.position = "none")
+
+
 #===============================================================================
 #===============================================================================
 #adding in error estimates for monthly means
@@ -83,9 +90,9 @@ pheno_bar <- ggplot(avg_gpp_sum, aes(x = direction, y = phenophase_gpp, fill = p
 pheno_dat <- dat_voi %>%
   mutate(phenophase = case_when(
     mm %in% phenophase_periods$dormancy ~ 'Dormancy',
-    mm %in% phenophase_periods$green_up ~ 'Green Up',
-    mm %in% phenophase_periods$dry_mature ~ 'Dry Mature',
-    mm %in% phenophase_periods$wet_mature ~ 'Wet Mature',
+    mm %in% phenophase_periods$green_up ~ 'Green_Up',
+    mm %in% phenophase_periods$dry_mature ~ 'Dry_Mature',
+    mm %in% phenophase_periods$wet_mature ~ 'Wet_Mature',
     mm %in% phenophase_periods$senescence ~ 'Senescence'
   ))
 #list for phenophases
@@ -100,7 +107,7 @@ pheno_split_by_dir <- lapply(pheno_split, function(df) {
 })
 
 #================================
-#boostrapping
+#boostrapping phenophases
 #================================
 #boot() requires data, stat function, and a specification of the number of samples to take
 #data (list) generated above
@@ -122,35 +129,115 @@ calc_mean <- function(data, i) {
   }
 
 #function to deal with list of lists with dfs
-calc_bootstrap_se <- function(df, n_samp = 100) {
-  #bootstrap using boot::boot() and stat function from above
-  result <- boot(df$gpp, bootstrap_se, n_bootstrap)
-  #calc sd from generated sample means to get se (boot doesn't just have a se object in the result even though it's displayed in the console?...)
+#calc avg bootstrapped phenophase gpp; scale to num days in phenophase (def below)
+calc_scaled_bootstrap_se <- function(df, n_samp = 1000, scale_factor) {
+  result <- boot(df$gpp, calc_mean, n_samp)
+  avg_day_gpp <- mean(result$t, na.rm = T)
+  scaled_avg <- avg_day_gpp * scale_factor
   se <- sd(result$t, na.rm = T)
-  return(se)
+  return(data.frame(standard_error = se, scaled_avg = scaled_avg))
 }
 
-#apply function across list of lists
-pheno_split_se <- lapply(pheno_split_by_dir, function(x) {
-  lapply(x, function(y) {
-      se <- calculate_bootstrap_se(y)
-      return(data.frame(standard_error = se))
-    } ) })
-#how does boot determine the index it uses 
-#why are NAs populating
+#phenophase month lengths for scaling
+season_lengths <- c(181, 30, 31, 31, 92)
 
+#apply both functions to pheno list 
+pheno_split_se_scaled <- mapply(function(season_list, scale_factor) {
+  lapply(season_list, function(direction_df) {
+    calc_scaled_bootstrap_se(direction_df, scale_factor = scale_factor)
+  })
+}, pheno_split_by_dir_test, season_lengths, SIMPLIFY = FALSE)
 
-test_df <- pheno_split_by_dir_test[[1]][[7]]$gpp
-boot(test_df, m, 100)
+#======================================
+#boostrapping for simulated annual total
+#======================================
+#bootstrap split_dat to calculate many avg GPP fluxes and scale those fluxes by year (365days) to create variation in sums for each direction
+#remove NA GPP values just in case 
+split_dat_cln <- lapply(split_dat, rm_nas)
+#bootstrap function for mean from above: calc_mean
+calc_scaled_sc <- function(df, n_samp = 1000){
+  result <- boot(df$gpp, function(data, i){
+    avg_day_gpp <- mean(data[i], na.rm =T)
+    scaled_avg <- avg_day_gpp *365
+    return(scaled_avg)
+  }, n_samp)
+  se <- sd(result$t, na.rm = T)
+  return(data.frame(standard_error = se, scaled_avg = mean(result$t, na.rm = T)))
+}
 
+total_an_se <- lapply(split_dat_cln, calc_scaled_sc)
 
 #===============================================================================
 #add se to bar plot
 #===============================================================================
-#pheno_bar plot from above
-pheno_err <- pheno_bar +
-  
+#pivot frame for phenophase columns
+wide_pheno <- avg_gpp_sum %>%
+  pivot_wider(names_from = phenophase, values_from = phenophase_gpp)%>%
+  mutate(direction = as.numeric(as.character(direction)))
 
+yax_breaks <- seq(0, 1800, by = 300)
+xax_breaks <- seq(10,360, by = 20)
+
+dormancy <- ggplot(data = wide_pheno, aes(x = direction, y = Dormancy))+
+  geom_bar(stat = "identity", fill = "#1f77b4") +
+  labs(x = "Direction", y = "Dormancy GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  #scale_x_continuous(breaks = xax_breaks,limits = c(0, 360))+
+  theme_minimal()
+gr_up <- ggplot(data = wide_pheno, aes(x = direction, y = Green_Up))+
+  geom_bar(stat = "identity", fill = "#2ca02c") +
+  labs(x = "Direction", y = "Green Up GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  theme_minimal()
+dry_mat <- ggplot(data = wide_pheno, aes(x = direction, y = Dry_Mature))+
+  geom_bar(stat = "identity", fill = "#2e8b57") +
+  labs(x = "Direction", y = "Dry Mature GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  theme_minimal()
+wet_mat <- ggplot(data = wide_pheno, aes(x = direction, y = Wet_Mature))+
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  labs(x = "Direction", y = "Wet Mature GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  theme_minimal()
+senes <- ggplot(data = wide_pheno, aes(x = direction, y = Senescence))+
+  geom_bar(stat = "identity", fill = "#17becf") +
+  labs(x = "Direction", y = "Senescence GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  theme_minimal()
+
+#pheno_bar plot from above
+#add error to df
+#merge st err list into df
+pheno_err <- map_df(names(pheno_split_se_scaled), function(outer_name) {
+  inner_list <- pheno_split_se_scaled[[outer_name]]
+  
+  map_df(names(inner_list), function(inner_name) {
+    inner_list[[inner_name]] %>%
+      mutate(Phenophase = outer_name, Direction = inner_name)
+  })
+})
+
+pheno_err_wide <- pheno_err %>%
+  mutate(scaled_avg = NULL)%>%
+  pivot_wider(names_from = Phenophase, values_from = standard_error)
+
+
+#total error might show up tho
+#change direction labels first
+
+
+#error so small not adding it 
+pheno_bar +
+  geom_errorbar()
+
+#add plots together
+pheno_plots <- ggarrange(dormancy, gr_up, dry_mat, NULL, wet_mat, senes, pheno_bar,NULL,
+                         ncol = 4,
+                         nrow = 2, 
+                         widths = c(1,1,1,0.1))
+
+
+pheno_plots
 
 
 
