@@ -130,12 +130,12 @@ calc_mean <- function(data, i) {
 
 #function to deal with list of lists with dfs
 #calc avg bootstrapped phenophase gpp; scale to num days in phenophase (def below)
-calc_scaled_bootstrap_se <- function(df, n_samp = 1000, scale_factor) {
+calc_scaled_bootstrap_se <- function(df, n_samp = 100, scale_factor) {
   result <- boot(df$gpp, calc_mean, n_samp)
-  avg_day_gpp <- mean(result$t, na.rm = T)
-  scaled_avg <- avg_day_gpp * scale_factor
-  se <- sd(result$t, na.rm = T)
-  return(data.frame(standard_error = se, scaled_avg = scaled_avg))
+  scaled_means <- result$t * scale_factor
+  avg_scaled_gpp <- mean(scaled_means, na.rm = TRUE)
+  se <- sd(scaled_means, na.rm = T)
+  return(data.frame(standard_error = se, scaled_avg = avg_scaled_gpp))
 }
 
 #phenophase month lengths for scaling
@@ -148,6 +148,7 @@ pheno_split_se_scaled <- mapply(function(season_list, scale_factor) {
   })
 }, pheno_split_by_dir_test, season_lengths, SIMPLIFY = FALSE)
 
+
 #======================================
 #boostrapping for simulated annual total
 #======================================
@@ -155,7 +156,7 @@ pheno_split_se_scaled <- mapply(function(season_list, scale_factor) {
 #remove NA GPP values just in case 
 split_dat_cln <- lapply(split_dat, rm_nas)
 #bootstrap function for mean from above: calc_mean
-calc_scaled_sc <- function(df, n_samp = 1000){
+calc_scaled_sc <- function(df, n_samp = 100){
   result <- boot(df$gpp, function(data, i){
     avg_day_gpp <- mean(data[i], na.rm =T)
     scaled_avg <- avg_day_gpp *365
@@ -175,39 +176,7 @@ wide_pheno <- avg_gpp_sum %>%
   pivot_wider(names_from = phenophase, values_from = phenophase_gpp)%>%
   mutate(direction = as.numeric(as.character(direction)))
 
-yax_breaks <- seq(0, 1800, by = 300)
-xax_breaks <- seq(10,360, by = 20)
-
-dormancy <- ggplot(data = wide_pheno, aes(x = direction, y = Dormancy))+
-  geom_bar(stat = "identity", fill = "#1f77b4") +
-  labs(x = "Direction", y = "Dormancy GPP") +
-  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
-  #scale_x_continuous(breaks = xax_breaks,limits = c(0, 360))+
-  theme_minimal()
-gr_up <- ggplot(data = wide_pheno, aes(x = direction, y = Green_Up))+
-  geom_bar(stat = "identity", fill = "#2ca02c") +
-  labs(x = "Direction", y = "Green Up GPP") +
-  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
-  theme_minimal()
-dry_mat <- ggplot(data = wide_pheno, aes(x = direction, y = Dry_Mature))+
-  geom_bar(stat = "identity", fill = "#2e8b57") +
-  labs(x = "Direction", y = "Dry Mature GPP") +
-  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
-  theme_minimal()
-wet_mat <- ggplot(data = wide_pheno, aes(x = direction, y = Wet_Mature))+
-  geom_bar(stat = "identity", fill = "darkgreen") +
-  labs(x = "Direction", y = "Wet Mature GPP") +
-  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
-  theme_minimal()
-senes <- ggplot(data = wide_pheno, aes(x = direction, y = Senescence))+
-  geom_bar(stat = "identity", fill = "#17becf") +
-  labs(x = "Direction", y = "Senescence GPP") +
-  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
-  theme_minimal()
-
-#pheno_bar plot from above
-#add error to df
-#merge st err list into df
+#reformat se from list to df
 pheno_err <- map_df(names(pheno_split_se_scaled), function(outer_name) {
   inner_list <- pheno_split_se_scaled[[outer_name]]
   
@@ -217,18 +186,58 @@ pheno_err <- map_df(names(pheno_split_se_scaled), function(outer_name) {
   })
 })
 
+#make col per phenophase
 pheno_err_wide <- pheno_err %>%
   mutate(scaled_avg = NULL)%>%
-  pivot_wider(names_from = Phenophase, values_from = standard_error)
+  pivot_wider(names_from = Phenophase, values_from = standard_error)%>%
+  rename_with(~paste0(., "_se"), -1)%>%
+  mutate(Direction = as.numeric(Direction))
 
+#join se df with phenophase avg gpp df
+pheno_with_se <- wide_pheno %>%
+  left_join(pheno_err_wide, by = c("direction" = "Direction"))
 
-#total error might show up tho
-#change direction labels first
+#plot:
+yax_breaks <- seq(0, 1800, by = 300)
+xax_breaks <- seq(10,360, by = 20)
 
+dormancy <- ggplot(data = pheno_with_se, aes(x = direction, y = Dormancy))+
+  geom_bar(stat = "identity", fill = "#1f77b4") +
+  geom_errorbar(aes(ymin = Dormancy - Dormancy_se, ymax = Dormancy + Dormancy_se),
+                width = 0.2, color = "black") +
+  labs(x = "Direction", y = "Dormancy GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  #scale_x_continuous(breaks = xax_breaks,limits = c(0, 360))+
+  theme_minimal()
+gr_up <- ggplot(data = pheno_with_se, aes(x = direction, y = Green_Up))+
+  geom_bar(stat = "identity", fill = "#2ca02c") +
+  geom_errorbar(aes(ymin = Green_Up - Green_Up_se, ymax = Green_Up + Green_Up_se),
+                width = 0.2, color = "black") +
+  labs(x = "Direction", y = "Green Up GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  theme_minimal()
+dry_mat <- ggplot(data = pheno_with_se, aes(x = direction, y = Dry_Mature))+
+  geom_bar(stat = "identity", fill = "#2e8b57") +
+  geom_errorbar(aes(ymin = Dry_Mature - Dry_Mature_se, ymax = Dry_Mature + Dry_Mature_se),
+                width = 0.2, color = "black") +
+  labs(x = "Direction", y = "Dry Mature GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  theme_minimal()
+wet_mat <- ggplot(data = pheno_with_se, aes(x = direction, y = Wet_Mature))+
+  geom_bar(stat = "identity", fill = "darkgreen") +
+  geom_errorbar(aes(ymin = Wet_Mature - Wet_Mature_se, ymax = Wet_Mature + Wet_Mature_se),
+                width = 0.2, color = "black") +
+  labs(x = "Direction", y = "Wet Mature GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  theme_minimal()
+senes <- ggplot(data = pheno_with_se, aes(x = direction, y = Senescence))+
+  geom_bar(stat = "identity", fill = "#17becf") +
+  geom_errorbar(aes(ymin = Senescence - Senescence_se, ymax = Senescence + Senescence_se),
+                width = 0.2, color = "black") +
+  labs(x = "Direction", y = "Senescence GPP") +
+  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
+  theme_minimal()
 
-#error so small not adding it 
-pheno_bar +
-  geom_errorbar()
 
 #add plots together
 pheno_plots <- ggarrange(dormancy, gr_up, dry_mat, NULL, wet_mat, senes, pheno_bar,NULL,
@@ -238,8 +247,3 @@ pheno_plots <- ggarrange(dormancy, gr_up, dry_mat, NULL, wet_mat, senes, pheno_b
 
 
 pheno_plots
-
-
-
-
-
