@@ -124,15 +124,19 @@ sq_pheno_err <- pheno_err %>%
   group_by(Direction)%>%
   mutate(dir_se = sqrt(sum(variance)))%>%
   rename(direction = Direction)%>%
+  rename(phenophase = Phenophase)%>%
   mutate(direction = as.numeric(direction))
 
-avg_gpp_sum <- left_join(avg_gpp_sum, sq_pheno_err, by = "direction")
+avg_gpp_sum <- left_join(avg_gpp_sum, sq_pheno_err, by = c("direction", "phenophase"))
 
 avg_gpp_sum <- avg_gpp_sum %>%
   mutate(phenophase = factor(phenophase, levels = names(phenophase_colors)))
 
 pheno_bar <- ggplot(avg_gpp_sum, aes(x = direction, y = phenophase_gpp, fill = phenophase)) +
   geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = total_gpp - dir_se, ymax = total_gpp + dir_se),
+                width = 0.2, color = "black") +
   labs(x = "Direction", y = "Total Annual GPP", fill = "Phenophase") +
   scale_fill_manual(values = phenophase_colors) +
   theme_minimal() 
+
