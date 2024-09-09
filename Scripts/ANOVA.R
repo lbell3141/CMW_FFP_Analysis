@@ -1,63 +1,147 @@
 #ANOVAs for gpp drivers and wind direction
-
+library(patchwork)
+library(ggplot2)
+library(effectsize)
 #===============prep df=========================================================
 #split_dat from driver_circles.R 
-dir_names <- paste0(deg_int[-length(deg_int)], "-", deg_int[-1])
-names(split_dat) <- dir_names
 
-split_dat_ID <- lapply(seq_along(split_dat), function(i) {
-  split_dat_ID <- split_dat[[i]]
-  split_dat_ID$WD <- dir_names[i]
-  return(split_dat_ID)
-})
+dat_voi<- dat_file %>%
+  summarize(
+    yyyy = year(TIMESTAMP_START),
+    mm = month(TIMESTAMP_START),
+    doy = yday(TIMESTAMP_START),
+    day = day(TIMESTAMP_START),
+    HH_UTC = hour(TIMESTAMP_START),
+    MM = minute(TIMESTAMP_START),
+    wind_sp = WS_1_1_1,
+    temp_atmos = TA_1_1_1,
+    u_star = USTAR,
+    wind_dir = WD_1_1_1,
+    gpp = GPP_PI,
+    precip = P,
+    rel_h = RH_1_1_1,
+    VPD = RHtoVPD(dat_file$RH_1_1_1, dat_file$TA_1_1_1, dat_file$PA),
+    ppfd = PPFD_IN_PI_F,
+    le = LE,
+    swc = SWC_PI_1_1_A
+  ) %>%
+  filter(HH_UTC >= 8 & HH_UTC <= 17)
+
+#split into direction windows
+deg_int <- seq(45, 360, by = 45)
+deg_int_real <- deg_int
+split_dat <- split(dat_voi, cut(dat_voi$wind_dir, breaks = c(0,deg_int_real), include.lowest = F, labels = deg_int_real))
+for (i in seq_along(split_dat)) {
+  split_dat[[i]]$dir_group <- rep(names(split_dat)[i], nrow(split_dat[[i]]))
+}
+dir_dat <- do.call(rbind, split_dat)
+
 #merge lists into a dataframe 
-combd_WD <- bind_rows(split_dat_ID)
+combd_WD <- bind_rows(split_dat)
+combd_WD <- combd_WD%>%
+  mutate(dir_group = as.factor(dir_group),
+         mm = as.factor(mm))
 
-combd_WD <- combd_WD %>%
-  filter(mm == 8)
- # filter(doy %in% 194:281)%>%
-  #filter(HH_UTC %in% 9:12)
-
+#actually, split into monthly list
+mwd_dat <- split(combd_WD, combd_WD$mm)
 
 #===============run ANOVAs======================================================
 #define driver variables
 voi <- c("ppfd", "rel_h", "temp_atmos", "VPD", "wind_sp", "le", "swc", "gpp")
 
-#loop through each variable in voi and plot: define axes, unquote voi, define type of plot, adjust plot visuals
-#make WD a factor so it increased correctly as levels
-combd_WD$dir_group <- factor(combd_WD$WD, levels = dir_names)
-
-
-#loop through voi and make dataframe colunms for results
-anova_df <- data.frame(Variable = character(),
-                       F_value = numeric(),
-                       P_value = numeric(),
-                       Eta_Squared = numeric(),
-                       stringsAsFactors = FALSE
+#make results df
+anova_df <- data.frame(
+  Month = character(),
+  Variable = character(),
+  F_value = numeric(),
+  P_value = numeric(),
+  Eta_Squared = numeric(),
+  stringsAsFactors = FALSE
 )
-#loop through vars and store results in df
-for (i in voi){
-  formula <- as.formula(paste(i, "~ WD"))
-  res_aov <- aov(formula, data = combd_WD)
-  
-  #store F-value and p-value from summary
-  summary_res <- summary(res_aov)
-  F_value <- summary_res[[1]][["F value"]][1]
-  P_value <- summary_res[[1]][["Pr(>F)"]][1]
-  
-  #calc e^2
-  eta_squared_res <- eta_squared(res_aov)
-  Eta_Squared <- eta_squared_res$Eta2[1]
-  
-  #add e^2 to df
-  anova_df <- rbind(anova_df, data.frame(
-    Variable = i,
-    F_value = F_value,
-    P_value = P_value,
-    Eta_Squared = Eta_Squared,
-    stringsAsFactors = FALSE
-  ))
+
+tukey_df <- data.frame(
+  Month = character(),
+  Variable = character(),
+  Comparison = character(),
+  Difference = numeric(),
+  Lower_CI = numeric(),
+  Upper_CI = numeric(),
+  P_value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+#loop through month list and voi within each df
+for (z in names(mwd_dat)) {
+  for (i in voi) {
+    #ANOVA equation
+    formula <- as.formula(paste(i, "~ dir_group"))
+    res_aov <- aov(formula, data = mwd_dat[[z]])
+    #add vals to summary
+    summary_res <- summary(res_aov)
+    F_value <- summary_res[[1]][["F value"]][1]
+    P_value <- summary_res[[1]][["Pr(>F)"]][1]
+    eta_squared_res <- eta_squared(res_aov)
+    Eta_Squared <- eta_squared_res$Eta2[1]
+    #put in df
+    anova_df <- rbind(anova_df, data.frame(
+      Month = z,
+      Variable = i,
+      F_value = F_value,
+      P_value = P_value,
+      Eta_Squared = Eta_Squared,
+      stringsAsFactors = FALSE
+    ))
+    
+    #post hoc test for significant P
+    if (P_value < 0.05) {
+      tukey_res <- TukeyHSD(res_aov)
+      
+      
+      tukey_results <- tukey_res$dir_group
+#add to df
+       tukey_df <- rbind(tukey_df, data.frame(
+        Month = month,
+        Variable = i,
+        Comparison = rownames(tukey_results),
+        Difference = tukey_results[, "diff"],
+        Lower_CI = tukey_results[, "lwr"],
+        Upper_CI = tukey_results[, "upr"],
+        P_value = tukey_results[, "p adj"],
+        stringsAsFactors = FALSE
+      ))
+    }
+  }
 }
+
+anova_df
+tukey_df
+
+#plots
+library(ggplot2)
+anova_df <- anova_df%>%
+  mutate(Month = as.numeric(Month))%>%
+  arrange(Month)%>%
+  mutate(Month = as.factor(Month))
+  
+#visualize F values: 
+ggplot(anova_df, aes(x = Variable, y = F_value, fill = Month)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_viridis_d()+
+  theme_minimal() +
+  labs(title = "x~WD F-values by Month", x = "Variable", y = "F-value") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#example plot from chatgpt
+ggplot(tukey_df, aes(x = Comparison, y = Difference, color = Variable)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2) +
+  theme_minimal() +
+  labs(title = "Tukey HSD Test Results", x = "Comparison", y = "Difference") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#=====================================================================
+#=====================================================================
+#=====================================================================
 
 #CV = sd/mean
 #finding seasonal (phenophase) variation 
@@ -73,18 +157,18 @@ phenophase_periods <- list(
 )
 
 #dir_dat from driver circles
-phenoavg_dat <- dir_dat %>%
-  mutate(Phenophase = case_when(
-    mm %in% phenophase_periods$dormancy ~ 'Dormancy',
-    mm %in% phenophase_periods$green_up ~ 'Green_Up',
-    mm %in% phenophase_periods$dry_mature ~ 'Dry_Mature',
-    mm %in% phenophase_periods$wet_mature ~ 'Wet_Mature',
-    mm %in% phenophase_periods$senescence ~ 'Senescence'
-  )) %>%
-  group_by(Phenophase, dir_group) %>%
-  summarise(across(-c(1:6), ~ mean(.x, na.rm = TRUE)))%>%
-  ungroup()%>%
-  group_by(Phenophase)
+#phenoavg_dat <- dir_dat %>%
+ # mutate(Phenophase = case_when(
+ #   mm %in% phenophase_periods$dormancy ~ 'Dormancy',
+ #   mm %in% phenophase_periods$green_up ~ 'Green_Up',
+ #   mm %in% phenophase_periods$dry_mature ~ 'Dry_Mature',
+ #   mm %in% phenophase_periods$wet_mature ~ 'Wet_Mature',
+ #   mm %in% phenophase_periods$senescence ~ 'Senescence'
+ # )) %>%
+##  group_by(Phenophase, dir_group) %>%
+#  summarise(across(-c(1:6), ~ mean(.x, na.rm = TRUE)))%>%
+#  ungroup()%>%
+ # group_by(Phenophase)
 
 #don't need avg and sd for WD, just per phenophase
 phenocol_dat <- dir_dat %>%
@@ -103,4 +187,146 @@ phenocol_dat <- dir_dat %>%
 #calc CV: sd/mean
 cv_pheno <- phenocol_dat%>%
   summarize(across(ends_with("_sd"), ~ .x / get(sub("_sd$", "_mean", cur_column())), .names = "cv_{col}"))%>%
-  mutate(Phenophase = phenocol_dat$Phenophase)
+  mutate(Phenophase = phenocol_dat$Phenophase)%>%
+  mutate(cv_dir_group_sd = NULL)
+#specify phenophase as factor to plot in (temporal) order
+cv_pheno$Phenophase <- factor(cv_pheno$Phenophase, levels = c(
+  "Dormancy", "Green_Up", "Dry_Mature", "Wet_Mature", "Senescence"
+))
+#dataframe format messy- maybe fix later
+#plot cv
+phenophase_colors <- c(
+  'Dormancy' = '#1f77b4', 
+  'Green_Up' = '#2ca02c',
+  'Dry_Mature' = '#2e8b57',
+  'Wet_Mature' = 'darkgreen',
+  'Senescence' = '#17becf'
+)
+
+#define plot labels
+xaxlab = "Phenophase"
+yaxlab = "Coefficient of Variation"
+plotlabs = c("Wind Speed", "Air Temperature", "Friction Velocity", "Wind Direction", "GPP", "Precipitation", "Relative Humidity", "VPD", "PPFD", "Latent Heat", "Soil Moisture")
+
+#use function to loop through driver columns
+plot_cvs <- function(z, plotlab) {
+  ggplot(data = cv_pheno, aes_string(x = "Phenophase", y = z, fill = "Phenophase")) +
+    geom_bar(stat = "identity") +
+    labs(fill = "Phenophase") +
+    scale_fill_manual(values = phenophase_colors) +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(), 
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_blank(), 
+          axis.title.y = element_blank(),
+          legend.position = "none") +
+    ggtitle(plotlab)
+}
+
+#define columns for plot
+plot_cols <- grep("^cv_", names(cv_pheno), value = TRUE)
+#apply function to cols
+cv_plots <- mapply(plot_cvs, plot_cols, plotlabs, SIMPLIFY = FALSE)
+#format plots in grid and add in legend
+design <- "
+ABC
+DEF
+GHI
+JKL
+"
+
+combined_plot <- wrap_plots(cv_plots, design = design) + 
+  plot_layout(guides = 'collect') +
+  theme(
+    legend.position = "right",
+    legend.direction = "vertical",
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  plot_annotation(
+    title = "Coefficient of Variation by Phenophase",
+    subtitle = NULL,
+    caption = NULL,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.margin = margin(10, 10, 10, 10)
+    )
+  )
+
+combined_plot
+#================================================================================
+#================================================================================
+#same thing but monthly
+#mean for wind direction vals by month: remove sampling bias by making all just one observation
+mmdir_dat <- dir_dat %>%
+  group_by(mm, dir_group)%>%
+  summarise(
+    across(-c(1:6), list(mean = ~ mean(.x, na.rm = TRUE)), 
+                         #sd = ~ sd(.x, na.rm = TRUE)), 
+           .names = "{col}_{fn}"))
+#calc monthly mean and sd 
+mm_stat <- mmdir_dat%>%
+  group_by(mm)%>%
+  summarise(
+    across(c(2:11), list(mean = ~ mean(.x, na.rm = TRUE), 
+                         sd = ~ sd(.x, na.rm = TRUE)), 
+           .names = "{col}_{fn}"))
+
+#calc CV: sd/mean
+cv_mm <- mm_stat%>%
+  summarize(across(ends_with("_sd"), ~ .x / get(sub("_sd$", "_mean", cur_column())), .names = "cv_{col}"))%>%
+  mutate(Month = seq(1,12,1)) %>%
+  mutate(Phenophase = c("Dormancy","Dormancy","Dormancy","Dormancy","Green_Up","Dry_Mature", "Wet_Mature","Wet_Mature","Wet_Mature","Senescence", "Dormancy","Dormancy"))
+#specify phenophase as factor to plot in (temporal) order
+
+#define plot labels
+plotlabs = c("Wind Speed", "Air Temperature", "Friction Velocity", "Wind Direction", "GPP", "Precipitation", "Relative Humidity", "VPD", "PPFD", "Latent Heat", "Soil Moisture")
+#y axis breaks
+yax_breaks = seq(0, 2.5, by = 0.5)
+
+#use function to loop through driver columns
+plot_cvs <- function(z, plotlab) {
+  ggplot(data = cv_mm, aes_string(x = "Month", y = z, fill = "Phenophase")) +
+    geom_bar(stat = "identity") +
+    labs(fill = "Phenophase") +
+    scale_fill_manual(values = phenophase_colors) +
+    theme_minimal() +
+    theme(axis.text.x = element_blank(), 
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_blank(), 
+          axis.title.y = element_blank(),
+          legend.position = "none") +
+    scale_y_continuous(breaks = yax_breaks,limits = c(0, 2.5))+
+    ggtitle(plotlab)
+}
+
+#define columns for plot
+plot_cols <- grep("^cv_", names(cv_mm), value = TRUE)
+#apply function to cols
+cv_plots <- mapply(plot_cvs, plot_cols, plotlabs, SIMPLIFY = FALSE)
+#format plots in grid and add in legend
+design <- "
+ABC
+DEF
+GHI
+JKL
+"
+
+combined_plot <- wrap_plots(cv_plots, design = design) + 
+  plot_layout(guides = 'collect') +
+  theme(
+    legend.position = "right",
+    legend.direction = "vertical",
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  plot_annotation(
+    title = "Coefficient of Variation by Month",
+    subtitle = NULL,
+    caption = NULL,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.margin = margin(10, 10, 10, 10)
+    )
+  )
+
+combined_plot
+
