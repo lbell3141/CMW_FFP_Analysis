@@ -78,7 +78,7 @@ create_plot <- function(month_abbr, month_full, variable) {
     geom_col(
       aes_string(
         x = "direction",
-        y = canopy_cover_col,
+        y = 0.8,
         fill = variable_col  
       ),
       position = "dodge2"
@@ -86,20 +86,20 @@ create_plot <- function(month_abbr, month_full, variable) {
     geom_segment(
       aes_string(
         x = "direction",
-        y = canopy_cover_col,
+        y = 0.8,
         xend = "direction", 
         end = 0.8 
       ),
       linetype = "dashed",
-      color = "gray12"
+      color = "white"
     ) + 
     coord_polar() +
-    scale_fill_viridis_c(option = "viridis", name = "GPP", limits = c(min_value, max_value)) +
+    scale_fill_viridis_c(option = "viridis", name = "% Canopy Cover", limits = c(min_value, max_value)) +
     theme(
       axis.title = element_blank(), 
       axis.ticks = element_blank(), 
       axis.text.y = element_blank(), 
-      axis.text.x = element_text(color = "gray12", size = 12),  
+      axis.text.x = element_blank(),  
       legend.position = "none",  # Remove individual legends
       text = element_text(color = "gray12", family = "Bell MT"),
       panel.background = element_rect(fill = "white", color = "white"),
@@ -115,7 +115,7 @@ month_abbr <- month.abb
 month_full <- month.name
 
 #change variable depending on target plot
-variable <- "gpp"
+variable <- "Cover"
 
 #define min and max for common legend using name string to define
 min_value <- min(sapply(month_abbr, function(m) min(plot_df[[paste0(m, "_", variable)]])))
@@ -138,8 +138,9 @@ legend_plot <- ggplot(plot_df) +
 final_plot <- wrap_plots(plots, ncol = 6) +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
-final_plot
-
+  
+final_plot+
+  plot_annotation(title = "Weighted Average % Canopy Cover")
 #=================common legend for NDVI
 #circular plot for just average monthly ndvi
 #combine geospatial df with plot frame

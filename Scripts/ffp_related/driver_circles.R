@@ -165,13 +165,13 @@ create_plot <- function(month_abbr, month_full, variable) {
   ggplot(plot_df) +  
     geom_hline(
       aes(yintercept = y), 
-      data.frame(y = c(3, 10)), 
+      data.frame(y = c(4, 5)), 
       color = "lightgrey"
     ) +
     geom_col(
       aes_string(
         x = "direction",
-        y = canopy_cover_col,
+        y = 5,
         fill = variable_col  
       ),
       position = "dodge2"
@@ -179,27 +179,30 @@ create_plot <- function(month_abbr, month_full, variable) {
     geom_segment(
       aes_string(
         x = "direction",
-        y = canopy_cover_col,
+        y = 5,
         xend = "direction", 
-        yend = 10
+        yend = 5
       ),
       linetype = "dashed",
-      color = "gray12"
+      color = "white"
     ) + 
     coord_polar() +
-    scale_fill_viridis_c(option = "viridis", name = "GPP") +
+    scale_fill_viridis_c(option = "viridis", name = "") +
     theme(
       axis.title = element_blank(), 
       axis.ticks = element_blank(), 
       axis.text.y = element_blank(), 
-      axis.text.x = element_text(color = "gray12", size = 12),  
+      axis.text.x = element_blank(),  
       legend.position = "bottom",
       text = element_text(color = "gray12", family = "Bell MT"),
       panel.background = element_rect(fill = "white", color = "white"),
       panel.grid = element_blank(),
       panel.grid.major.x = element_blank()
     ) +
-    labs(title = month_full) 
+    labs(title = month_full) +
+    guides(
+      fill = guide_colorbar(barwidth = 8, barheight = 0.5)
+    )
 }
 
 #abbreviations for pasting onto variable names
@@ -208,7 +211,7 @@ month_abbr <- month.abb
 month_full <- month.name
 
 #define variable (didn't want to write a nested loop, so produce plots one at a time)
-variable <- "gpp_mzs"
+variable <- "CHM"
 
 #create individual plots with loop
 plots <- Map(create_plot, month_abbr, month_full, MoreArgs = list(variable = variable))
@@ -216,7 +219,8 @@ plots <- Map(create_plot, month_abbr, month_full, MoreArgs = list(variable = var
 #combine plots into a single frame
 final_plot <- wrap_plots(plots, ncol = 6) & 
   theme(legend.position = "bottom")
-final_plot
+final_plot+ 
+  plot_annotation(title = "Average Canopy Height")
 
 #====================
 #====================

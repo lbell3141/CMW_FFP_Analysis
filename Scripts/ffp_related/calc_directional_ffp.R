@@ -75,7 +75,7 @@ for (i in seq_along(ffp_list)) {
 #apply function to lists and loaded RAP data:
 rap_ffp_list <- list()
 for (i in seq_along(x_list)) {
-  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], rast)
+  rap_ffp_list[[i]] <- ffp_contours_to_mask(x_list[[i]], y_list[[i]], canopy)
 }
 
 #convert to df with correct WD
@@ -147,6 +147,15 @@ par(mfrow = c(1, 1))
 plot(gpp_cover_df$direction, gpp_cover_df$avg_gpp, xlab = "Wind Direction", ylab = "GPP")
 plot(gpp_cover_df$direction, gpp_cover_df$veg_cover, xlab = "Wind Direction", ylab = "Canopy Cover")
 
+
+gpp_cover_df <- gpp_cover_df%>%
+  mutate(veg_cover = veg_cover*100)
+ggplot(gpp_cover_df, aes(x = veg_cover, y = avg_gpp))+
+  geom_point()+
+  theme_minimal()+
+  labs(x = "Weighted % Canopy Cover", y = "Weighted Average GPP (µmolCO2 m-2 s-1)")+
+  scale_x_continuous(breaks = seq(60,80,2.5))
+ 
 
 df_sub <- gpp_cover_df %>%
   filter(direction %in% 170:270)
