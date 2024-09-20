@@ -100,7 +100,7 @@ for (z in names(mwd_dat)) {
       tukey_results <- tukey_res$dir_group
 #add to df
        tukey_df <- rbind(tukey_df, data.frame(
-        Month = month,
+        Month = z,
         Variable = i,
         Comparison = rownames(tukey_results),
         Difference = tukey_results[, "diff"],
@@ -128,7 +128,7 @@ ggplot(anova_df, aes(x = Variable, y = F_value, fill = Month)) +
   geom_bar(stat = "identity", position = "dodge") +
   scale_fill_viridis_d()+
   theme_minimal() +
-  labs(title = "x~WD F-values by Month", x = "Variable", y = "F-value") +
+  labs(title = "x~WD F-values by Month", x = "Variable", y = "F Value") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 #example plot from chatgpt
@@ -138,6 +138,46 @@ ggplot(tukey_df, aes(x = Comparison, y = Difference, color = Variable)) +
   theme_minimal() +
   labs(title = "Tukey HSD Test Results", x = "Comparison", y = "Difference") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#=====================================================================
+#color by phenophase instead of month
+#=====================================================================
+phenophase_periods <- list(
+  dormancy = c(1:4, 11, 12),
+  green_up = 5,
+  dry_mature = 6,
+  wet_mature = 7:9,
+  senescence = 10
+)
+
+anova_df_pheno <- anova_df %>%
+  mutate(Phenophase = case_when(
+    Month %in% phenophase_periods$dormancy ~ 'Dormancy',
+    Month %in% phenophase_periods$green_up ~ 'Green_Up',
+    Month %in% phenophase_periods$dry_mature ~ 'Dry_Mature',
+    Month %in% phenophase_periods$wet_mature ~ 'Wet_Mature',
+    Month %in% phenophase_periods$senescence ~ 'Senescence'
+  ))
+phenophase_colors <- c(
+  'Dormancy' = '#1f77b4', 
+  'Green_Up' = '#CFF2A8',
+  'Dry_Mature' = '#86CD34',
+  'Wet_Mature' = '#4E890C',
+  'Senescence' = '#17becf'
+)
+anova_df_pheno$Month <- factor(test$Month, levels = 1:12, labels = month.name)
+anova_df_pheno$Variable <- factor(test$Variable, levels = c("gpp", "wind_sp", "VPD", "temp_atmos", "rel_h", "le", "swc", "ppfd"), labels = c("GPP", "Wind Speed", "VPD", "Air Temp", "Rel. Humidity", "Latent Heat", "Soil Moisture", "PPFD"))
+anova_df_pheno$Phenophase <- factor(anova_df_pheno$Phenophase, levels = c('Dormancy', 'Green_Up', 'Dry_Mature', 'Wet_Mature', 'Senescence'))
+ggplot(anova_df_pheno, aes(x = Variable, y = F_value, fill = Phenophase)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8)) +
+  facet_wrap(~ Month) +
+  scale_fill_manual(values = phenophase_colors) +
+  scale_y_continuous(breaks = seq(0,500, 250)) +
+  theme_minimal() +
+  labs(title = "Monthly F Values (x ~ WD)", x = "", y = "F Value") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(face = "bold"))
+
+
 
 #=====================================================================
 #=====================================================================
@@ -197,9 +237,9 @@ cv_pheno$Phenophase <- factor(cv_pheno$Phenophase, levels = c(
 #plot cv
 phenophase_colors <- c(
   'Dormancy' = '#1f77b4', 
-  'Green_Up' = '#2ca02c',
-  'Dry_Mature' = '#2e8b57',
-  'Wet_Mature' = 'darkgreen',
+  'Green_Up' = '#CFF2A8',
+  'Dry_Mature' = '#86CD34',
+  'Wet_Mature' = '#4E890C',
   'Senescence' = '#17becf'
 )
 
@@ -258,16 +298,17 @@ combined_plot
 #same thing but monthly
 #mean for wind direction vals by month: remove sampling bias by making all just one observation
 mmdir_dat <- dir_dat %>%
-  group_by(mm, dir_group)%>%
+  group_by(mm, dir_group) %>%
   summarise(
-    across(-c(1:6), list(mean = ~ mean(.x, na.rm = TRUE)), 
-                         #sd = ~ sd(.x, na.rm = TRUE)), 
-           .names = "{col}_{fn}"))
+    across(c(wind_sp, temp_atmos, u_star, wind_dir, gpp, precip, rel_h, VPD, ppfd, le, swc), 
+           list(mean = ~ mean(.x, na.rm = TRUE)), 
+           .names = "{col}_{fn}")
+  )
 #calc monthly mean and sd 
 mm_stat <- mmdir_dat%>%
   group_by(mm)%>%
   summarise(
-    across(c(2:11), list(mean = ~ mean(.x, na.rm = TRUE), 
+    across(c(2:12), list(mean = ~ mean(.x, na.rm = TRUE), 
                          sd = ~ sd(.x, na.rm = TRUE)), 
            .names = "{col}_{fn}"))
 
@@ -276,10 +317,14 @@ cv_mm <- mm_stat%>%
   summarize(across(ends_with("_sd"), ~ .x / get(sub("_sd$", "_mean", cur_column())), .names = "cv_{col}"))%>%
   mutate(Month = seq(1,12,1)) %>%
   mutate(Phenophase = c("Dormancy","Dormancy","Dormancy","Dormancy","Green_Up","Dry_Mature", "Wet_Mature","Wet_Mature","Wet_Mature","Senescence", "Dormancy","Dormancy"))
+
+#reduce variables plotted
+#col names off but doesn't matter for plotting so I'm not fixing it
+cv_mm <- cv_mm[, c(1:2, 5:13)]
 #specify phenophase as factor to plot in (temporal) order
 
 #define plot labels
-plotlabs = c("Wind Speed", "Air Temperature", "Friction Velocity", "Wind Direction", "GPP", "Precipitation", "Relative Humidity", "VPD", "PPFD", "Latent Heat", "Soil Moisture")
+plotlabs = c("Wind Speed", "Air Temperature", "GPP", "Precipitation", "Relative Humidity", "VPD", "PPFD", "Latent Heat", "Soil Moisture")
 #y axis breaks
 yax_breaks = seq(0, 2.5, by = 0.5)
 
@@ -308,7 +353,6 @@ design <- "
 ABC
 DEF
 GHI
-JKL
 "
 
 combined_plot <- wrap_plots(cv_plots, design = design) + 
@@ -330,3 +374,83 @@ combined_plot <- wrap_plots(cv_plots, design = design) +
 
 combined_plot
 
+
+
+#==============================
+#==============================
+# Calculate mean for selected columns grouped by month and direction group
+mmdir_dat <- dir_dat %>%
+  group_by(mm, dir_group) %>%
+  summarise(across(c(wind_sp, temp_atmos, u_star, wind_dir, gpp, precip, rel_h, VPD, ppfd, le, swc), 
+                   mean, na.rm = TRUE, 
+                   .names = "{col}_mean"))
+
+# Calculate monthly mean and standard deviation for the selected variables
+mm_stat <- mmdir_dat %>%
+  group_by(mm) %>%
+  summarise(across(ends_with("_mean"), 
+                   list(mean = ~ mean(.x, na.rm = TRUE), 
+                        sd = ~ sd(.x, na.rm = TRUE)), 
+                   .names = "{col}_{fn}"))
+
+cv_mm_stat <- mm_stat %>%
+  mutate(across(ends_with("_sd"), 
+                ~ .x / get(sub("_sd$", "_mean", cur_column())), 
+                .names = "cv_{col}"))
+cv_mm_stat <- cv_mm_stat[,c(1, 24,25, 28:34)]
+cv_mm_stat <- cv_mm_stat%>%
+  mutate(Phenophase = c("Dormancy","Dormancy","Dormancy","Dormancy","Green_Up","Dry_Mature", "Wet_Mature","Wet_Mature","Wet_Mature","Senescence", "Dormancy","Dormancy"))
+cv_mm_stat$Phenophase <- factor(cv_mm_stat$Phenophase, levels = c('Dormancy', 'Green_Up', 'Dry_Mature', 'Wet_Mature', 'Senescence'))
+cv_mm_stat <- cv_mm_stat[, -5]
+#define plot labels
+plotlabs = c("Wind Speed", "Air Temperature", "GPP", "Relative Humidity", "VPD", "PPFD", "Latent Heat", "Soil Moisture")
+
+
+#y axis breaks
+yax_breaks = seq(0, 0.6, by = 0.2)
+
+#use function to loop through driver columns
+plot_cvs <- function(z, plotlab) {
+  ggplot(data = cv_mm_stat, aes_string(x = "mm", y = z, fill = "Phenophase")) +
+    geom_bar(stat = "identity") +
+    labs(fill = "Phenophase", y = "Coefficient of Variation") +  # Added axis title for clarity
+    scale_fill_manual(values = phenophase_colors) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 65, hjust = 1),  # Rotate x-axis text for better readability
+          axis.title.x = element_blank(), 
+          axis.title.y = element_blank(),
+          legend.position = "none") +  # Keep the legend off if needed
+    scale_y_continuous(breaks = yax_breaks, limits = c(0, 0.6)) +
+    scale_x_continuous(breaks = seq(1,12,1), labels = month_abbr) +  # Use month names on x-axis
+    ggtitle(plotlab)
+}
+
+#define columns for plot
+plot_cols <- grep("^cv_", names(cv_mm_stat), value = TRUE)
+#apply function to cols
+cv_plots <- mapply(plot_cvs, plot_cols, plotlabs, SIMPLIFY = FALSE)
+#format plots in grid and add in legend
+design <- "
+ABC
+DEF
+GHI
+"
+
+combined_plot <- wrap_plots(cv_plots, design = design) + 
+  plot_layout(guides = 'collect') +
+  theme(
+    legend.position = "right",
+    legend.direction = "vertical",
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  plot_annotation(
+    title = "Coefficient of Variation by Month",
+    subtitle = NULL,
+    caption = NULL,
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.margin = margin(10, 10, 10, 10)
+    )
+  )
+
+combined_plot

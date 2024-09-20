@@ -34,7 +34,7 @@ dat_voi = dat_file %>%
     H = H,
     temp_atmos = TA_1_1_1,
     #sigma_v = sqrt((u_mean*((-1.3*L + 0.1)^2))/100000),
-    sigma_v = ,
+    sigma_v = 2,
     u_star = USTAR,
     wind_dir = WD_1_1_1,
     test = zm/L,
@@ -174,8 +174,9 @@ plot_frame <- data.frame(window_median, avg_gpp, se_gpp)
 #plot midpoint and average gpp; use se to make y ranges
 plot <- ggplot(data = plot_frame, aes(window_median, avg_gpp, ymin = avg_gpp - se_gpp, ymax = avg_gpp + se_gpp)) +
   geom_point() + 
-  geom_errorbar(width = 0.2) + 
-  labs(x = "Wind Direction Window Median", y = "Average GPP per Wind Direction", title = "Productivity per Wind Direction with Standard Error")
+  geom_errorbar(width = 0.2, alpha = 0.3) + 
+  theme_minimal()+
+  labs(x = "Wind Direction: Window Median (degrees)", y = "Average GPP (µmolCO2 m-2 s-1)", title = "Productivity per Wind Direction (5deg moving window)")
 
 plot
 

@@ -68,8 +68,9 @@ dat_grouped <- dat_grouped%>%
 #for bar plot
 ggplot(dat_grouped, aes(x = HH_UTC)) +
   geom_bar(aes(fill = WD_Group), position = "dodge") +
+  scale_x_continuous(breaks = seq(8,17,1))+
   labs(title = "Diurnal Wind Direction Frequency",
-       x = "Time of Day",
+       x = "Time of Day (Hr)",
        y = "Number of Observations",
        fill = "WD Group") +
   theme_minimal()
@@ -147,6 +148,7 @@ ggplot(summary_data, aes(x = doy, y = moving_avg, color = WD_Group, group = WD_G
   geom_line(size = 0.8) +  # Adjust line thickness as needed
   labs(title = "Annual Wind Direction Frequency",
        x = "Day of Year",
-       y = "Moving Average of Observations",
+       y = "Number of Observations (30-day Moving Average)",
        color = "WD Group") +
+  scale_x_continuous(breaks = seq(0,365,50))+
   theme_minimal()
