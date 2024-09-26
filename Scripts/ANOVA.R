@@ -397,14 +397,14 @@ cv_mm_stat <- mm_stat %>%
   mutate(across(ends_with("_sd"), 
                 ~ .x / get(sub("_sd$", "_mean", cur_column())), 
                 .names = "cv_{col}"))
-cv_mm_stat <- cv_mm_stat[,c(1, 24,25, 28:34)]
+cv_mm_stat <- cv_mm_stat[,c(1,25, 28:34)]
 cv_mm_stat <- cv_mm_stat%>%
   mutate(Phenophase = c("Dormancy","Dormancy","Dormancy","Dormancy","Green_Up","Dry_Mature", "Wet_Mature","Wet_Mature","Wet_Mature","Senescence", "Dormancy","Dormancy"))
 cv_mm_stat$Phenophase <- factor(cv_mm_stat$Phenophase, levels = c('Dormancy', 'Green_Up', 'Dry_Mature', 'Wet_Mature', 'Senescence'))
-cv_mm_stat <- cv_mm_stat[, -5]
 #define plot labels
-plotlabs = c("Wind Speed", "Air Temperature", "GPP", "Relative Humidity", "VPD", "PPFD", "Latent Heat", "Soil Moisture")
-
+plotlabs = c("GPP", "Latent Heat","Air Temperature","Relative Humidity", "VPD",   "Soil Moisture","PPFD")
+cv_mm_stat <- cv_mm_stat%>%
+  select(mm, Phenophase, cv_gpp_mean_sd, cv_le_mean_sd, cv_temp_atmos_mean_sd, cv_rel_h_mean_sd, cv_VPD_mean_sd, cv_swc_mean_sd, cv_ppfd_mean_sd)
 
 #y axis breaks
 yax_breaks = seq(0, 0.6, by = 0.2)
@@ -413,15 +413,15 @@ yax_breaks = seq(0, 0.6, by = 0.2)
 plot_cvs <- function(z, plotlab) {
   ggplot(data = cv_mm_stat, aes_string(x = "mm", y = z, fill = "Phenophase")) +
     geom_bar(stat = "identity") +
-    labs(fill = "Phenophase", y = "Coefficient of Variation") +  # Added axis title for clarity
+    labs(fill = "Phenophase", y = "Coefficient of Variation") +
     scale_fill_manual(values = phenophase_colors) +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle = 65, hjust = 1),  # Rotate x-axis text for better readability
+    theme(axis.text.x = element_text(angle = 65, hjust = 1),
           axis.title.x = element_blank(), 
           axis.title.y = element_blank(),
-          legend.position = "none") +  # Keep the legend off if needed
+          legend.position = "none") + 
     scale_y_continuous(breaks = yax_breaks, limits = c(0, 0.6)) +
-    scale_x_continuous(breaks = seq(1,12,1), labels = month_abbr) +  # Use month names on x-axis
+    scale_x_continuous(breaks = seq(1,12,1), labels = month.abb) + 
     ggtitle(plotlab)
 }
 
@@ -444,11 +444,11 @@ combined_plot <- wrap_plots(cv_plots, design = design) +
     plot.margin = margin(20, 20, 20, 20)
   ) +
   plot_annotation(
-    title = "Coefficient of Variation by Month",
+    title = "Monthly Coefficient of Variation",
     subtitle = NULL,
     caption = NULL,
     theme = theme(
-      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.title = element_text(size = 14, hjust = 0.5),
       plot.margin = margin(10, 10, 10, 10)
     )
   )

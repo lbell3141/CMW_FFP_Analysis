@@ -1,8 +1,12 @@
 #ANOVA for modeled and observed GPP data
 #GPP ~ WD + mm + WD*mm
-
+library(dplyr)
+library(plantecophys)
 library(ggplot2)
 library(reshape2)
+library(lubridate)
+dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv",  na.strings = "-9999", header = TRUE, sep = ",", skip = 2)
+dat_file$TIMESTAMP_START <- ymd_hm(as.character(dat_file$TIMESTAMP_START))
 
 dat_voi<- dat_file %>%
   summarize(
