@@ -247,3 +247,7 @@ pheno_plots <- ggarrange(dormancy, gr_up, dry_mat, NULL, wet_mat, senes, pheno_b
 
 
 pheno_plots
+
+
+#=============================Moisture separated phases=========================
+#top of soil profile

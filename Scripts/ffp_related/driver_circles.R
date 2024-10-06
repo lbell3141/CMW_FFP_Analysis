@@ -87,10 +87,11 @@ dat_voi<- dat_file %>%
     le = LE,
     swc = SWC_PI_1_1_A
   ) %>%
-  filter(HH_UTC >= 8 & HH_UTC <= 17)
+  filter(HH_UTC >= 8 & HH_UTC <= 17)%>%
+  filter(u_star > 0.2)
 
 #split into direction windows
-deg_int <- seq(10, 350, by = 10)
+deg_int <- seq(20, 340, by = 20)
 deg_int_real <- deg_int
 split_dat <- split(dat_voi, cut(dat_voi$wind_dir, breaks = c(0, deg_int, 360), include.lowest = TRUE, labels = c(deg_int_real, 360)))
 for (i in seq_along(split_dat)) {
@@ -107,7 +108,7 @@ dir_dat_avg <- dir_dat %>%
   arrange(mm, dir_group)
 dir_dat_avg = dir_dat_avg[,c(1:2,8:18)]
 dir_dat_avg <- dir_dat_avg %>%
-  filter(dir_group != 50)%>%
+  #filter(dir_group != 50)%>%
   rename(month = mm)%>%
   rename(direction = dir_group)
 

@@ -152,3 +152,19 @@ ggplot(summary_data, aes(x = doy, y = moving_avg, color = WD_Group, group = WD_G
        color = "WD Group") +
   scale_x_continuous(breaks = seq(0,365,50))+
   theme_minimal()
+#===============================================================================
+#==============================Hourly Obs Proportion============================
+#===============================================================================
+#find number of obs for each hr
+hour_obs <- dir_dat %>%
+  group_by(HH_UTC) %>%
+  summarise(obs = n()/nrow(dir_dat))
+
+#plot
+ggplot(hour_obs, aes(x = factor(HH_UTC), y = obs)) +
+  geom_bar(stat = "identity", fill = "darkgreen", color = "black") +
+  theme_minimal() +
+  labs(title = "",
+       x = "Hour of Day",
+       y = "Number of Observations") +
+  theme(text = element_text(size = 12, family = "Arial"))

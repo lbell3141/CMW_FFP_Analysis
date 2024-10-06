@@ -1,10 +1,12 @@
 #ANOVA for modeled and observed GPP data
 #GPP ~ WD + mm + WD*mm
 library(dplyr)
+library(rsq)
 library(plantecophys)
 library(ggplot2)
 library(reshape2)
 library(lubridate)
+library(ggpubr)
 dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv",  na.strings = "-9999", header = TRUE, sep = ",", skip = 2)
 dat_file$TIMESTAMP_START <- ymd_hm(as.character(dat_file$TIMESTAMP_START))
 
@@ -41,9 +43,40 @@ dir_dat <- do.call(rbind, split_dat)
 
 #predict gpp:
 
-model <- lm(gpp ~ swc + temp_atmos + rel_h + ppfd + wind_sp + precip +HH_UTC, data=dir_dat)
+model <- lm(gpp ~ swc + temp_atmos + rel_h + ppfd + wind_sp + precip, data=dir_dat)
 #predict data based on modeled relationship
 modeled_gpp <- predict(model, dir_dat)
+
+#=== = = = = = = = = == = = = = = = = = = 
+#calc partial r squared using rsq package
+partial_r2 <- rsq.partial(model)
+#extract p values and coefs from model summary
+model_summary <- summary(model)$coefficients[-1, ]
+coefs <- model_summary[, 1]
+#make df with all info 
+partial_r2_table <- data.frame(
+  Variable = names(partial_r2),
+  Coefficient = coefs,
+  Partial_R2 = partial_r2,
+  P_value = p_values
+)
+partial_r2_table <- partial_r2_table %>%
+  select( P_value, Coefficient, Partial_R2.partial.rsq)%>%
+  mutate(P_value = round(P_value, 3), 
+         Coefficient = round(Coefficient, 3),
+         Partial_R2.partial.rsq = round(Partial_R2.partial.rsq, 3))%>%
+  rename( 
+         "Patial R^2" = Partial_R2.partial.rsq,
+         "P-value" = P_value)
+
+# Create the table plot using ggpubr
+p_table <- ggtexttable(partial_r2_table, 
+                       theme = ttheme("light", base_size = 12))
+
+# Display the table as a figure
+print(p_table)
+#=== = = = = = = = = == = = = = = = = = = 
+
 #add to df
 dir_dat$modeled_gpp <- modeled_gpp
 #find difference bt real and modeled observations 

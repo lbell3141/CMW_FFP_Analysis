@@ -57,7 +57,7 @@ plot_df <- full_join(plot_df, mm_dat, by = "direction")
 
 #use reshape package: convert to long columns instead of rows
 long_plot_df <- melt(plot_df, id.vars = "direction", 
-                     measure.vars = c(paste0(month_abbr, "_gpp"), paste0(month_abbr, "_Cover")),
+                     measure.vars = c(paste0(month_abbr, "_gpp"), paste0(month_abbr, "_veg_cover")),
                      variable.name = "Month_Variable", value.name = "Value")
 
 #individual columns for month and variable values
@@ -67,7 +67,7 @@ long_plot_df$Variable <- gsub(".*_", "", long_plot_df$Month_Variable)
 #making plots (same code, but legends removed in order to add a common legend back in)
 create_plot <- function(month_abbr, month_full, variable) {
   variable_col <- paste0(month_abbr, "_", variable)
-  canopy_cover_col <- paste0(month_abbr, "_Cover")
+  canopy_cover_col <- paste0(month_abbr, "_veg_cover")
   
   ggplot(plot_df) +  
     geom_hline(
@@ -94,13 +94,13 @@ create_plot <- function(month_abbr, month_full, variable) {
       color = "white"
     ) + 
     coord_polar() +
-    scale_fill_viridis_c(option = "viridis", name = "% Canopy Cover", limits = c(min_value, max_value)) +
+    scale_fill_viridis_c(option = "viridis", name = "GPP", limits = c(min_value, max_value)) +
     theme(
       axis.title = element_blank(), 
       axis.ticks = element_blank(), 
       axis.text.y = element_blank(), 
       axis.text.x = element_blank(),  
-      legend.position = "none",  # Remove individual legends
+      legend.position = "none",
       text = element_text(color = "gray12", family = "Bell MT"),
       panel.background = element_rect(fill = "white", color = "white"),
       panel.grid = element_blank(),
@@ -115,7 +115,7 @@ month_abbr <- month.abb
 month_full <- month.name
 
 #change variable depending on target plot
-variable <- "Cover"
+variable <- "gpp"
 
 #define min and max for common legend using name string to define
 min_value <- min(sapply(month_abbr, function(m) min(plot_df[[paste0(m, "_", variable)]])))
@@ -140,7 +140,7 @@ final_plot <- wrap_plots(plots, ncol = 6) +
   theme(legend.position = "bottom")
   
 final_plot+
-  plot_annotation(title = "Weighted Average % Canopy Cover")
+  plot_annotation(title = "Average Monthly GPP")
 #=================common legend for NDVI
 #circular plot for just average monthly ndvi
 #combine geospatial df with plot frame
