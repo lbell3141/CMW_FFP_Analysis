@@ -69,12 +69,9 @@ partial_r2_table <- partial_r2_table %>%
          "Patial R^2" = Partial_R2.partial.rsq,
          "P-value" = P_value)
 
-# Create the table plot using ggpubr
 p_table <- ggtexttable(partial_r2_table, 
                        theme = ttheme("light", base_size = 12))
 
-# Display the table as a figure
-print(p_table)
 #=== = = = = = = = = == = = = = = = = = = 
 
 #add to df
@@ -96,6 +93,18 @@ summary(obs_result)
 mod_formula <- as.formula(modeled_gpp ~ dir_group + mm + dir_group*mm)
 mod_result <- aov(mod_formula, data = anova_dat)
 summary(mod_result)
+
+#===============================================================================
+obs_ss_total <- sum((anova_dat$gpp - mean(anova_dat$gpp))^2)
+obs_ss_residual <- sum(resid(obs_result)^2) 
+obs_r2 <- 1 - (obs_ss_residual / obs_ss_total)
+
+mod_ss_total <- sum((anova_dat$modeled_gpp - mean(anova_dat$modeled_gpp))^2) 
+mod_ss_residual <- sum(resid(mod_result)^2) 
+mod_r2 <- 1 - (mod_ss_residual / mod_ss_total)
+
+obs_r2
+mod_r2
 
 #residuals==========================
 #get residuals
@@ -124,6 +133,7 @@ mod_eta_squared
 #fit values based on anova formula
 obs_fitted <- fitted(obs_result)
 mod_fitted <- fitted(mod_result)
+
 #create plot_df
 fitted_df <- data.frame(
   data_type = rep(c("Observed", "Modeled"), each = nrow(anova_dat)),
@@ -153,6 +163,8 @@ obs_var
 mod_var
 obs_cv
 mod_cv
+obs_r2
+mod_r2
 #obs_eta_squared
 obs_eta_squared_dir_group <- obs_eta_squared[1]
 obs_eta_squared_mm <- obs_eta_squared[2]
@@ -165,9 +177,9 @@ mod_eta_squared_combo <- mod_eta_squared[3]
 
 #combine measures into a single df
 comparison_df <- data.frame(
-  Metric = c('eta_squared_dir_group', 'eta_squared_mm', 'eta_squared_combo','cv', 'variance'),
-  Observed = c(obs_eta_squared_dir_group, obs_eta_squared_mm,obs_eta_squared_combo,obs_cv, obs_var),
-  Model = c(mod_eta_squared_dir_group, mod_eta_squared_mm, mod_eta_squared_combo, mod_cv, mod_var)
+  Metric = c('Wind Direction Effect', 'Month Effect', 'WD*Month Effect','Coef. Variation', 'Variance', 'R^2'),
+  Observed = c(obs_eta_squared_dir_group, obs_eta_squared_mm,obs_eta_squared_combo,obs_cv, obs_var, obs_r2),
+  Modeled = c(mod_eta_squared_dir_group, mod_eta_squared_mm, mod_eta_squared_combo, mod_cv, mod_var, mod_r2)
 )
 #switch plot format for bar plotting
 comparison_df <- melt(comparison_df, id.vars = "Metric")
@@ -181,3 +193,12 @@ ggplot(comparison_df, aes(x = variable, y = value, fill = variable)) +
   theme_minimal() +
   scale_fill_manual(values = c("Observed" = "#00BFC4", "Model" = "#F8766D")) +
   theme(legend.title = element_blank())
+
+#plot as table
+comparison_df <- comparison_df%>%
+  mutate(Observed = round(Observed, digits = 3),
+         Modeled = round(Modeled,  digits =3))
+table <- ggtexttable(comparison_df, 
+                       theme = ttheme("light", base_size = 24))
+table
+
