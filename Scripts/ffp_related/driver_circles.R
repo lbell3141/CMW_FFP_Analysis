@@ -87,8 +87,7 @@ dat_voi<- dat_file %>%
     le = LE,
     swc = SWC_PI_1_1_A
   ) %>%
-  filter(HH_UTC >= 8 & HH_UTC <= 17)%>%
-  filter(u_star > 0.2)
+  filter(HH_UTC >= 8 & HH_UTC <= 17)
 
 #split into direction windows
 deg_int <- seq(20, 340, by = 20)
