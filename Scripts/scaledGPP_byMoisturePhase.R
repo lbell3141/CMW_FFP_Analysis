@@ -28,33 +28,28 @@ plot(avg_gpp$direction, avg_gpp$yy_gpp)
 #add phenophase contribution to plot
 #gallo et al 2024 phenophase DOY approximated monthly as
 #Dormancy: c(1:4, 11, 12), green up: 5, dry mature: 6, wet mature: 7:9, senescence: 10
-phenophase_periods <- list(
-  dormancy = c(1:4, 11, 12),
-  green_up = 5,
-  dry_mature = 6,
-  wet_mature = 7:9,
-  senescence = 10
-)
+moisture_periods <- list(
+  surface = c(7:10),
+  residual = c(5,6),
+  winter = c(11, 12, 1:4))
 
 #add phenophase groupings to df
 avg_gpp <- avg_gpp %>%
-  mutate(phenophase = case_when(
-    month %in% phenophase_periods$dormancy ~ 'Dormancy',
-    month %in% phenophase_periods$green_up ~ 'Green_Up',
-    month %in% phenophase_periods$dry_mature ~ 'Dry_Mature',
-    month %in% phenophase_periods$wet_mature ~ 'Wet_Mature',
-    month %in% phenophase_periods$senescence ~ 'Senescence'
+  mutate(moisture = case_when(
+    month %in% moisture_periods$surface ~ 'Surface',
+    month %in% moisture_periods$residual ~ 'Residual',
+    month %in% moisture_periods$winter ~ 'Winter',
   ))
 
 #calc gpp for each phenophase for each direction
 avg_gpp_sum <- avg_gpp %>%
-  group_by(direction, phenophase) %>%
-  summarise(phenophase_gpp = sum(month_gpp), .groups = 'drop')
+  group_by(direction, moisture) %>%
+  summarise(moisture_gpp = sum(month_gpp), .groups = 'drop')
 
 #then make separate df for total gpp by direction
 total_gpp <- avg_gpp_sum %>%
   group_by(direction) %>%
-  summarise(total_gpp = sum(phenophase_gpp), .groups = 'drop')
+  summarise(total_gpp = sum(moisture_gpp), .groups = 'drop')
 
 #find phenophase % contribution to total gpp
 avg_gpp_sum <- avg_gpp_sum %>%
@@ -62,25 +57,24 @@ avg_gpp_sum <- avg_gpp_sum %>%
 
 #plotting
 #colors for phenophases
-phenophase_colors <- c(
-  'Dormancy' = '#1f77b4', 
-  'Green_Up' = '#2ca02c',
-  'Dry_Mature' = '#2e8b57',
-  'Wet_Mature' = 'darkgreen',
-  'Senescence' = '#17becf'
-  )
+moisture_colors <- c(
+  'Winter' = '#1f77b4', 
+  'Residual' = '#2ca02c',
+  'Surface' = 'darkgreen'
+)
 
 #to plot in chronological order
 avg_gpp_sum <- avg_gpp_sum %>%
-  mutate(phenophase = factor(phenophase, levels = names(phenophase_colors)))
+  mutate(moisture = factor(moisture, levels = names(moisture_colors)))
 
-pheno_bar <- ggplot(avg_gpp_sum, aes(x = direction, y = phenophase_gpp, fill = phenophase)) +
+pheno_bar <- ggplot(avg_gpp_sum, aes(x = direction, y = moisture_gpp, fill = moisture)) +
   geom_bar(stat = "identity") +
-  labs(x = "Direction", y = "Total Annual GPP", fill = "Phenophase") +
-  scale_fill_manual(values = phenophase_colors) +
+  labs(x = "Direction", y = "Total Annual GPP", fill = "moisture") +
+  scale_fill_manual(values = moisture_colors) +
+  guides(fill = "none")+
   theme_minimal() 
-  
-  #theme(legend.position = "none")
+
+#theme(legend.position = "none")
 
 
 #===============================================================================
@@ -126,11 +120,11 @@ pheno_split_by_dir_test <- lapply(pheno_split_by_dir, function(x) {
 #define function for mean:
 calc_mean <- function(data, i) {
   mean(data[i], na.rm = T)
-  }
+}
 
 #function to deal with list of lists with dfs
 #calc avg bootstrapped phenophase gpp; scale to num days in phenophase (def below)
-calc_scaled_bootstrap_se <- function(df, n_samp = 50, scale_factor) {
+calc_scaled_bootstrap_se <- function(df, n_samp = 100, scale_factor) {
   result <- boot(df$gpp, calc_mean, n_samp)
   scaled_means <- result$t * scale_factor
   avg_scaled_gpp <- mean(scaled_means, na.rm = TRUE)
@@ -156,7 +150,7 @@ pheno_split_se_scaled <- mapply(function(season_list, scale_factor) {
 #remove NA GPP values just in case 
 split_dat_cln <- lapply(split_dat, rm_nas)
 #bootstrap function for mean from above: calc_mean
-calc_scaled_sc <- function(df, n_samp = 50){
+calc_scaled_sc <- function(df, n_samp = 100){
   result <- boot(df$gpp, function(data, i){
     avg_day_gpp <- mean(data[i], na.rm =T)
     scaled_avg <- avg_day_gpp *365
@@ -173,7 +167,7 @@ total_an_se <- lapply(split_dat_cln, calc_scaled_sc)
 #===============================================================================
 #pivot frame for phenophase columns
 wide_pheno <- avg_gpp_sum %>%
-  pivot_wider(names_from = phenophase, values_from = phenophase_gpp)%>%
+  pivot_wider(names_from = moisture, values_from = moisture_gpp)%>%
   mutate(direction = as.numeric(as.character(direction)))
 
 #reformat se from list to df
@@ -199,51 +193,36 @@ pheno_with_se <- wide_pheno %>%
 
 #plot:
 yax_breaks <- seq(0, 1800, by = 300)
-xax_breaks <- seq(10,360, by = 20)
+xax_breaks <- seq(20,360, by = 20)
 
-dormancy <- ggplot(data = pheno_with_se, aes(x = direction, y = Dormancy))+
+dormancy <- ggplot(data = wide_pheno, aes(x = direction, y = Winter))+
   geom_bar(stat = "identity", fill = "#1f77b4") +
-  geom_errorbar(aes(ymin = Dormancy - Dormancy_se, ymax = Dormancy + Dormancy_se),
-                width = 0.2, color = "black") +
-  labs(x = "Direction", y = "Dormancy GPP") +
+  #geom_errorbar(aes(ymin = Dormancy - Dormancy_se, ymax = Dormancy + Dormancy_se),
+                #width = 0.2, color = "black") +
+  labs(x = "Direction", y = "Winter") +
   scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
   #scale_x_continuous(breaks = xax_breaks,limits = c(0, 360))+
   theme_minimal()
-gr_up <- ggplot(data = pheno_with_se, aes(x = direction, y = Green_Up))+
+gr_up <- ggplot(data = wide_pheno, aes(x = direction, y = Residual))+
   geom_bar(stat = "identity", fill = "#2ca02c") +
-  geom_errorbar(aes(ymin = Green_Up - Green_Up_se, ymax = Green_Up + Green_Up_se),
-                width = 0.2, color = "black") +
-  labs(x = "Direction", y = "Green Up GPP") +
+  #geom_errorbar(aes(ymin = Green_Up - Green_Up_se, ymax = Green_Up + Green_Up_se),
+                #width = 0.2, color = "black") +
+  labs(x = "Direction", y = "Residual") +
   scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
   theme_minimal()
-dry_mat <- ggplot(data = pheno_with_se, aes(x = direction, y = Dry_Mature))+
-  geom_bar(stat = "identity", fill = "#2e8b57") +
-  geom_errorbar(aes(ymin = Dry_Mature - Dry_Mature_se, ymax = Dry_Mature + Dry_Mature_se),
-                width = 0.2, color = "black") +
-  labs(x = "Direction", y = "Dry Mature GPP") +
-  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
-  theme_minimal()
-wet_mat <- ggplot(data = pheno_with_se, aes(x = direction, y = Wet_Mature))+
+wet_mat <- ggplot(data = wide_pheno, aes(x = direction, y = Surface))+
   geom_bar(stat = "identity", fill = "darkgreen") +
-  geom_errorbar(aes(ymin = Wet_Mature - Wet_Mature_se, ymax = Wet_Mature + Wet_Mature_se),
-                width = 0.2, color = "black") +
-  labs(x = "Direction", y = "Wet Mature GPP") +
-  scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
-  theme_minimal()
-senes <- ggplot(data = pheno_with_se, aes(x = direction, y = Senescence))+
-  geom_bar(stat = "identity", fill = "#17becf") +
-  geom_errorbar(aes(ymin = Senescence - Senescence_se, ymax = Senescence + Senescence_se),
-                width = 0.2, color = "black") +
-  labs(x = "Direction", y = "Senescence GPP") +
+  #geom_errorbar(aes(ymin = Wet_Mature - Wet_Mature_se, ymax = Wet_Mature + Wet_Mature_se),
+               # width = 0.2, color = "black") +
+  labs(x = "Direction", y = "Surface") +
   scale_y_continuous(breaks = yax_breaks,limits = c(0, 1800))+
   theme_minimal()
 
 
 #add plots together
-pheno_plots <- ggarrange(dormancy, gr_up, dry_mat, NULL, wet_mat, senes, pheno_bar,NULL,
-                         ncol = 4,
-                         nrow = 2, 
-                         widths = c(1,1,1,0.1))
+pheno_plots <- ggarrange(dormancy, NULL,gr_up, pheno_bar,wet_mat, NULL,
+                         ncol = 2,
+                         nrow = 3)
 
 
 pheno_plots
