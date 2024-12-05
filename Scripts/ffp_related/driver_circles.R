@@ -90,12 +90,10 @@ dat_voi<- dat_file %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)
 
 #split into direction windows
-deg_int <- seq(20, 340, by = 20)
-deg_int_real <- deg_int
-split_dat <- split(dat_voi, cut(dat_voi$wind_dir, breaks = c(0, deg_int, 360), include.lowest = TRUE, labels = c(deg_int_real, 360)))
-for (i in seq_along(split_dat)) {
-  split_dat[[i]]$dir_group <- rep(names(split_dat)[i], nrow(split_dat[[i]]))
-}
+deg_int <- seq(0, 360, by = 10)
+deg_int_label <- seq(10, 360, by = 10)
+dat_voi$dir_group <- cut(dat_voi$wind_dir, breaks = deg_int, include.lowest = T, labels = deg_int_label)
+split_dat <- split(dat_voi, dat_voi$dir_group)
 dir_dat <- do.call(rbind, split_dat)
 
 #calc avg normalized value for each direction group in each month
