@@ -1,9 +1,9 @@
-#load dir_dat_avg from driver_circles.R
+#load dir_dat_avg and mm_dat from driver_circles.R
 library(dplyr)
 
 mm_gpp <- dir_dat_avg[,c(1,2,7)]
-data_chm <- data[,c(1:13)]
-coi_df <- plot_df %>% select(contains(c("gpp", "CHM")))
+data_chm <- mm_dat[,c(1:13)]
+#coi_df <- plot_df %>% select(contains(c("gpp", "CHM")))
 
 #change df format for many rows instead of many column; change format to match gpp data
 month_map <- c("jan" = 1, "feb" = 2, "mar" = 3, "apr" = 4, "may" = 5, "jun" = 6,
@@ -38,11 +38,47 @@ ggplot(combd_df, aes(x = gpp, y = CHM, color = month)) +
   theme_minimal()
 
 
-ggplot(combd_df, aes(x = zscore_gpp, y = zscore_chm, color = month)) +
+ggplot(combd_df, aes(x = zscore_gpp, y = zscore_chm)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE, color = "maroon")+
   scale_color_viridis_c() + 
-  labs(x = "Canopy Height (Z-Score)", y = "GPP (Z-Score)", color = "Month") +
+  labs(x = "Canopy Height (Z-Score)", y = "GPP (Z-Score)") +
+  theme_minimal()
+
+#===============================================================================
+#for cover:
+data_cov <- mm_dat[,c(1,38:49)]
+mm_cov_df <- data_cov %>%
+  pivot_longer(
+    cols = ends_with("Cover"),
+    names_to = c("month", ".value"),
+    names_pattern = "(\\w+)_(\\w+)"
+  ) %>%
+  mutate(month = month_map[month],
+         direction = str_sub(direction, 1, nchar(direction) - 1))
+
+#combine dfs
+combd_df <- merge(mm_gpp, mm_cov_df, by = c("month", "direction"))
+
+combd_df <- combd_df %>%
+  group_by(month) %>%
+  mutate(
+    zscore_gpp = (gpp - mean(gpp, na.rm = TRUE)) / sd(gpp, na.rm = TRUE),
+    zscore_cover = (Cover - mean(Cover, na.rm = TRUE)) / sd(Cover, na.rm = TRUE)
+  ) %>%
+  ungroup() 
+
+ggplot(combd_df, aes(x = gpp, y = Cover, color = month)) +
+  geom_point() +  # Plot the points
+  geom_smooth(method = "lm", se = FALSE, aes(group = month)) +
+  scale_color_viridis_c() +
+  labs(x = "GPP", y = "Cover", color = "Month") +
   theme_minimal()
 
 
+ggplot(combd_df, aes(x = zscore_gpp, y = zscore_cover)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "maroon")+
+  scale_color_viridis_c() + 
+  labs(x = "Canopy Cover (Z-Score)", y = "GPP (Z-Score)") +
+  theme_minimal()
