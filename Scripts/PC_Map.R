@@ -1,7 +1,7 @@
 #make a map of photosynthetic capacity around the tower using 
 #gridded LAI and avg directional GPP. 
 #LiDAR flown July 2021, so we extract avg July GPP
-
+#https://gis.stackexchange.com/questions/297719/splitting-circle-polygon-into-equal-sectors-in-qgis
 library(terra)
 library(dplyr)
 library(viridis)
