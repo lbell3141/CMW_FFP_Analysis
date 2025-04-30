@@ -116,61 +116,170 @@ combd <- merge(gpp_df, lai_df, by = c("x", "y"), all.x = TRUE)%>%
 combd$direction <- ifelse(combd$direction > 10, 11, combd$direction)
 
 ######=============Plot================
-# Calculate max, middle, and mean values for the color scale
+library(ggplot2)
+library(dplyr)
+library(grid)
+library(patchwork)
+library(ggpubr)
+library(cowplot)
+
+#=================== Raster Plot (p4) ===================
 max_value <- max(combd$direction, na.rm = TRUE)
-mean_value <- mean(combd$direction, na.rm = TRUE)
-middle_value <- (max_value + min(combd$direction, na.rm = TRUE)) / 2
 
-# Create the plot with the updated legend position and custom labels
-ggplot(combd, aes(x = x, y = y, fill = direction)) +
+p4 <- ggplot(combd, aes(x = x, y = y, fill = direction)) +
   geom_raster() +
+  coord_fixed() +  # <- fixes the aspect ratio
   scale_fill_viridis_c(
-    breaks = c(min(combd$direction, na.rm = TRUE), middle_value, max_value), 
+    breaks = c(min(combd$direction, na.rm = TRUE), max(combd$direction, na.rm = TRUE)), 
     labels = c(
       round(min(combd$direction, na.rm = TRUE), 0),
-      round(middle_value, 0),
-      round(max_value, 0)
+      round(max(combd$direction, na.rm = TRUE), 0)
     )
   ) +
   theme_void() +
-  labs(fill = 
-         "Photosynthetic Capacity
-(μmol CO2 m-2 leaf area)") +  # Removed plot title
+  labs(fill = "Photosynthetic Capacity\n(μmol CO2 m-2 leaf area)") +
   theme(
-    legend.position = "bottom",  # Move legend to the bottom
-    legend.title = element_text(size = 18, hjust = 0.5),  # Customize legend title size and center it
-    legend.title.position = "top",  # Move legend title above the colorbar
-    legend.text = element_text(size = 16),  # Customize legend text size
-    legend.key.width = unit(1, "cm"),  # Adjust width of color bar key
-    legend.key.height = unit(1, "cm")  # Adjust height of color bar key
+    legend.position = "bottom",
+    legend.title = element_text(size = 14, hjust = 0.5, margin = margin(b = 10)),  # Increase margin to raise the title
+    legend.title.position = "top",
+    legend.text = element_text(size = 10),
+    legend.key.width = unit(1, "cm"),
+    legend.key.height = unit(1, "cm")
   ) +
-  guides(fill = guide_colorbar(barwidth = 8, barheight = 2))  # Customize the color bar
+  guides(fill = guide_colorbar(barwidth = 5, barheight = 2))
 
+#=================== LAI Plot (p3) ===================
+sec_lai <- merge(dir_dat_avg, combd, by = "gpp") %>%
+  rename(direction = direction.x) %>%
+  group_by(direction) %>%
+  summarise(lai = mean(LAI, na.rm = TRUE))
 
-#=================================Plot LAI======================================
-max_value <- max(combd$LAI, na.rm = TRUE)
-mean_value <- mean(combd$LAI, na.rm = TRUE)
-middle_value <- (max_value + min(combd$LAI, na.rm = TRUE)) / 2
-
-ggplot(combd, aes(x = x, y = y, fill = LAI)) +
-  geom_raster() +
+p3 <- ggplot(sec_lai, aes(x = direction, y = 5, fill = lai)) +
+  geom_col(width = 20) +
+  coord_polar() +
   scale_fill_viridis_c(
-    breaks = c(min(combd$direction, na.rm = TRUE), middle_value, max_value), 
-    labels = c(
-      round(min(combd$direction, na.rm = TRUE), 0),
-      round(middle_value, 0),
-      round(max_value, 0)
-    )
+    option = "viridis",
+    limits = c(min(sec_lai$lai, na.rm = TRUE), max(sec_lai$lai, na.rm = TRUE)),
+    breaks = c(min(sec_lai$lai, na.rm = TRUE), max(sec_lai$lai, na.rm = TRUE)),
+    labels = function(x) sprintf("%.1f", x)
   ) +
-  theme_void() +
-  labs(fill = 
-         "Leaf Area Index)") +  # Removed plot title
+  labs(fill = "LAI") +
+  theme_minimal() +
   theme(
-    legend.position = "bottom",  # Move legend to the bottom
-    legend.title = element_text(size = 18, hjust = 0.5),  # Customize legend title size and center it
-    legend.title.position = "top",  # Move legend title above the colorbar
-    legend.text = element_text(size = 16),  # Customize legend text size
-    legend.key.width = unit(1, "cm"),  # Adjust width of color bar key
-    legend.key.height = unit(1, "cm")  # Adjust height of color bar key
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right",
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),  # Increase margin to raise the title
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
   ) +
-  guides(fill = guide_colorbar(barwidth = 8, barheight = 2))  # Customize the color bar
+  guides(fill = guide_colorbar(barwidth = 1, barheight = 3))
+
+#=================== PC Plot (p2) ===================
+sec_PC <- merge(dir_dat_avg, combd, by = "gpp") %>%
+  rename(direction = direction.x) %>%
+  group_by(direction) %>%
+  summarise(PC = mean(direction.y, na.rm = TRUE))
+
+p2 <- ggplot(sec_PC, aes(x = direction, y = 5, fill = PC)) +
+  geom_col(width = 20) +
+  coord_polar() +
+  scale_fill_viridis_c(
+    option = "viridis",
+    limits = c(min(sec_PC$PC, na.rm = TRUE), max(sec_PC$PC, na.rm = TRUE)),
+    breaks = c(min(sec_PC$PC, na.rm = TRUE), max(sec_PC$PC, na.rm = TRUE)),
+    labels = function(x) sprintf("%.1f", x)
+  ) +
+  labs(fill = "PC") +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right",
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),  # Increase margin to raise the title
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
+  ) +
+  guides(fill = guide_colorbar(barwidth = 1, barheight = 3))
+
+#=================== GPP Plot (p1) ===================
+sec_gpp <- merge(dir_dat_avg, combd, by = "gpp") %>%
+  rename(direction = direction.x) %>%
+  group_by(direction) %>%
+  summarise(gpp = mean(gpp, na.rm = TRUE))
+
+p1 <- ggplot(sec_gpp, aes(x = direction, y = 5, fill = gpp)) +
+  geom_col(width = 20) +
+  coord_polar() +
+  scale_fill_viridis_c(
+    option = "viridis",
+    limits = c(min(sec_gpp$gpp, na.rm = TRUE), max(sec_gpp$gpp, na.rm = TRUE)),
+    breaks = c(min(sec_gpp$gpp, na.rm = TRUE), max(sec_gpp$gpp, na.rm = TRUE)),
+    labels = function(x) sprintf("%.1f", x)
+  ) +
+  labs(fill = "GPP") +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right",
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),  # Increase margin to raise the title
+    legend.title.position = "top",
+    legend.text = element_text(size = 13)
+  ) +
+  guides(fill = guide_colorbar(barwidth = 1, barheight = 3))
+
+#=================== Combine All Plots ===================
+# ---- 1. Create p4 without the legend ----
+p4_nolegend <- p4 + theme(legend.position = "none")
+
+# ---- 2. Extract the legend from p4 ----
+legend_p4 <- ggpubr::get_legend(
+  p4 + 
+    guides(fill = guide_colorbar(barwidth = 3, barheight = 1)) +
+    theme_void() +
+    theme(
+      legend.position = "bottom",
+      legend.title = element_text(size = 14, hjust = 0.5, margin = margin(b = 10)),
+      legend.title.position = "top",
+      legend.text = element_text(size = 13),
+      legend.key.width = unit(2, "cm"),
+      legend.key.height = unit(2, "cm")
+    )
+)
+
+# ---- 3. Left column: p4 plot stacked with its legend (tight spacing) ----
+left_column <- plot_grid(
+  p4_nolegend,
+  legend_p4,
+  ncol = 1,
+  rel_heights = c(1, 0.3)  # Adjust to control legend spacing
+)
+
+# ---- 4. Right column: p1, p3, p2 stacked vertically ----
+right_column <- plot_grid(
+  p1, p3, p2,
+  ncol = 1,
+  rel_heights = c(1, 1, 1)
+)
+
+# ---- 5. Combine both columns side-by-side ----
+final_plot <- plot_grid(
+  left_column,
+  right_column,
+  ncol = 2,
+  rel_widths = c(1.4, 1.3)  # Adjust width balance between columns
+)
+
+# ---- 6. Display final plot ----
+final_plot
+
