@@ -1,4 +1,5 @@
 # Load libraries
+library(plantecophys)
 library(tidyr)
 library(dplyr)
 library(stringr)
@@ -97,69 +98,89 @@ combd_df_zscores <- combd_df %>%
 #===============================================================================
 # Plotting
 #===============================================================================
-# Plot GPP vs NDVI, GPP vs CHM, and GPP vs Cover
+
+# Fit models and extract R^2
+lm_ndvi <- lm(gpp ~ NDVI, data = combd_df_zscores)
+r2_ndvi <- summary(lm_ndvi)$r.squared
+
+lm_chm <- lm(gpp ~ CHM, data = combd_df_zscores)
+r2_chm <- summary(lm_chm)$r.squared
+
+lm_cover <- lm(gpp ~ Cover, data = combd_df_zscores)
+r2_cover <- summary(lm_cover)$r.squared
+
 # Plot 1: GPP vs NDVI
 p1 <- ggplot(combd_df_zscores, aes(x = NDVI, y = gpp)) +
-  geom_point(color = "black", size = 1) +
+  geom_point(color = "black", size = 0.8) +
   geom_smooth(method = "lm", se = FALSE, color = "maroon") +
+  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_ndvi, 2)),
+           hjust = 1.1, vjust = 1.5, size = 5) +
   labs(x = "NDVI", y = "GPP") +
   theme_minimal() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
-    axis.title = element_text(size = 14),  # Increase axis title font size
-    axis.text = element_text(size = 12)    # Increase axis value label font size
-  ) +
-  ggtitle("")
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12)
+  )
 
-# Plot 2: GPP vs Canopy Height (CHM)
+# Plot 2: GPP vs Canopy Height
 p2 <- ggplot(combd_df_zscores, aes(x = CHM, y = gpp)) +
-  geom_point(color = "black", size = 1) +
+  geom_point(color = "black", size = 0.8) +
   geom_smooth(method = "lm", se = FALSE, color = "maroon") +
+  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_chm, 2)),
+           hjust = 1.1, vjust = 1.5, size = 5) +
   labs(x = "Canopy Height", y = "GPP") +
   theme_minimal() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
-    axis.title = element_text(size = 14),  # Increase axis title font size
-    axis.text = element_text(size = 12)    # Increase axis value label font size
-  ) +
-  ggtitle("")
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12)
+  )
 
 # Plot 3: GPP vs Cover
 p3 <- ggplot(combd_df_zscores, aes(x = Cover, y = gpp)) +
-  geom_point(color = "black", size = 1) +
+  geom_point(color = "black", size = 0.8) +
   geom_smooth(method = "lm", se = FALSE, color = "maroon") +
-  labs(x = "Cover", y = "GPP") +
+  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_cover, 2)),
+           hjust = 1.1, vjust = 1.5, size = 5) +
+  labs(x = "Canopy Cover", y = "GPP") +
   theme_minimal() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
-    axis.title = element_text(size = 14),  # Increase axis title font size
-    axis.text = element_text(size = 12)    # Increase axis value label font size
-  ) +
-  ggtitle("")
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12)
+  )
 
-# Arrange the plots in a 3-panel graphic
-grid.arrange(p2, p1, p3, ncol = 3)
+# Arrange the plots
+grid.arrange(p2, p3, p1, ncol = 3)
+
 
 #===============================================================================
 # TWI plot
 #===============================================================================
+# Fit linear model for GPP vs TWI
+lm_twi <- lm(TWI ~ gpp, data = combd_df_zscores)
+r2_twi <- summary(lm_twi)$r.squared
+
+# Create plot with updated point size and R² annotation
 twi_plot <- ggplot(combd_df_zscores, aes(x = gpp, y = TWI)) +
-  geom_point(color = "black", size = 1) +
+  geom_point(color = "black", size = 0.8) +
   geom_smooth(method = "lm", se = FALSE, color = "maroon") +
+  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_twi, 2)),
+           hjust = 1.1, vjust = 1.5, size = 5) +
   labs(x = "GPP", y = "TWI") +
   theme_minimal() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
-    axis.title = element_text(size = 14),  # Increase axis title font size
-    axis.text = element_text(size = 12)    # Increase axis value label font size
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12)
   ) +
   ggtitle("")
-twi_plot

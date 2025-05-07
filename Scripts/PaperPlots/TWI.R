@@ -164,20 +164,27 @@ combd_df_zscores <- combd_df %>%
   ungroup() %>%
   bind_cols(select(combd_df, direction))
 
+# Fit linear model
+lm_twi <- lm(gpp ~ TWI, data = combd_df_zscores)
+r2_twi <- summary(lm_twi)$r.squared
+
+# Create plot
 twi_plot <- ggplot(combd_df_zscores, aes(x = TWI, y = gpp)) +
-  geom_point(color = "black", size = 1) +
+  geom_point(color = "black", size = 0.8) +
   geom_smooth(method = "lm", se = FALSE, color = "maroon") +
+  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_twi, 2)),
+           hjust = 1.1, vjust = 1.5, size = 6) +
   labs(x = "TWI", y = "GPP") +
   theme_minimal() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
-    axis.title = element_text(size = 18),  # Increase axis title font size
-    axis.text = element_text(size = 16)    # Increase axis value label font size
+    axis.title = element_text(size = 18),
+    axis.text = element_text(size = 16)
   ) +
   ggtitle("")
-twi_plot
+
 
 #===============================================================================
 # TWI Raster

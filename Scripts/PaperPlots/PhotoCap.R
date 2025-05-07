@@ -283,3 +283,96 @@ final_plot <- plot_grid(
 # ---- 6. Display final plot ----
 final_plot
 
+#=================== Omit High Res Plot ===================
+#=================== LAI Plot (p3) ===================
+sec_lai <- merge(dir_dat_avg, combd, by = "gpp") %>%
+  rename(direction = direction.x) %>%
+  group_by(direction) %>%
+  summarise(lai = mean(LAI, na.rm = TRUE))
+
+p3 <- ggplot(sec_lai, aes(x = direction, y = 5, fill = lai)) +
+  geom_col(width = 20) +
+  coord_polar() +
+  scale_fill_viridis_c(
+    option = "viridis",
+    limits = range(sec_lai$lai, na.rm = TRUE),
+    breaks = range(sec_lai$lai, na.rm = TRUE),
+    labels = function(x) sprintf("%.1f", x)
+  ) +
+  labs(fill = "LAI\n") +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "bottom",
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(t = -20)),
+    legend.text = element_text(size = 13),
+    legend.title.position = "top"
+  ) +
+  guides(fill = guide_colorbar(barwidth = 3.5, barheight = 1))
+
+#=================== PC Plot (p2) ===================
+sec_PC <- merge(dir_dat_avg, combd, by = "gpp") %>%
+  rename(direction = direction.x) %>%
+  group_by(direction) %>%
+  summarise(PC = mean(direction.y, na.rm = TRUE))
+
+p2 <- ggplot(sec_PC, aes(x = direction, y = 5, fill = PC)) +
+  geom_col(width = 20) +
+  coord_polar() +
+  scale_fill_viridis_c(
+    option = "viridis",
+    limits = range(sec_PC$PC, na.rm = TRUE),
+    breaks = range(sec_PC$PC, na.rm = TRUE),
+    labels = function(x) sprintf("%.1f", x)
+  ) +
+  labs(fill = "PC\n") +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "bottom",
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(t = -20)),
+    legend.text = element_text(size = 13),
+    legend.title.position = "top"
+  ) +
+  guides(fill = guide_colorbar(barwidth = 3.5, barheight = 1))
+
+#=================== GPP Plot (p1) ===================
+sec_gpp <- merge(dir_dat_avg, combd, by = "gpp") %>%
+  rename(direction = direction.x) %>%
+  group_by(direction) %>%
+  summarise(gpp = mean(gpp, na.rm = TRUE))
+
+p1 <- ggplot(sec_gpp, aes(x = direction, y = 5, fill = gpp)) +
+  geom_col(width = 20) +
+  coord_polar() +
+  scale_fill_viridis_c(
+    option = "viridis",
+    limits = range(sec_gpp$gpp, na.rm = TRUE),
+    breaks = range(sec_gpp$gpp, na.rm = TRUE),
+    labels = function(x) sprintf("%.1f", x)
+  ) +
+  labs(fill = "GPP\n") +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "bottom",
+    panel.background = element_blank(),
+    plot.background = element_blank(),
+    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(t = -20)),
+    legend.text = element_text(size = 12),
+    legend.title.position = "top"
+  ) +
+  guides(fill = guide_colorbar(barwidth = 3.5, barheight = 1))
+
+#=================== Combine all ===================
+(p1 | p3 | p2) 
