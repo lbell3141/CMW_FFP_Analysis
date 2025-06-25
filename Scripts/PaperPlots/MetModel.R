@@ -3,6 +3,7 @@
 # Load Packages
 #===============================================================================
 library(tidyverse)
+library(plantecophys)
 library(lubridate)
 library(patchwork)
 
@@ -47,7 +48,7 @@ mm_split_dat <- split(dat_cln, dat_cln$mm)
 #===============================================================================
 
 mod_mm <- function(x) {
-  model <- lm(gpp ~ swc + temp_atmos + rel_h + ppfd + wind_sp + precip + HH_UTC, data = x)
+  model <- lm(gpp ~ swc + temp_atmos + rel_h + ppfd + wind_sp + precip, data = x)
   
   x %>%
     mutate(
@@ -123,3 +124,11 @@ final_plot <- wrap_plots(plot_list, ncol = 6) +
 final_plot +
   plot_annotation(title = "Directional Residual GPP") +
   theme(text = element_text(color = "black"))
+
+#===============================================================================
+#===============================================================================
+#===============================================================================
+# Model only for summer months (June - September)
+#===============================================================================
+#===============================================================================
+#===============================================================================
