@@ -161,11 +161,9 @@ spearman_long <- spearman_results %>%
                              cor_nee_reco = "NEE vs Reco"))
 
 
-# Prepare data: add a positive version of cor_nee_reco for plotting
 spearman_results <- spearman_results %>%
   mutate(cor_nee_reco_pos = abs(cor_nee_reco))
 
-# Reshape for bar plotting
 spearman_long <- spearman_results %>%
   select(mm, cor_gpp_nee, cor_nee_reco_pos) %>%
   pivot_longer(cols = c(cor_gpp_nee, cor_nee_reco_pos),
@@ -179,10 +177,7 @@ spearman_long <- spearman_results %>%
 
 
 
-# ---- Step 1: Prepare the data ----
-# Assume you already have spearman_results with columns: mm, cor_gpp_nee, cor_nee_reco
 
-# Create a column with the positive values of the negative correlations for plotting
 spearman_long <- spearman_results %>%
   mutate(cor_nee_reco_pos = abs(cor_nee_reco)) %>%
   select(mm, cor_gpp_nee, cor_nee_reco_pos) %>%
@@ -195,7 +190,6 @@ spearman_long <- spearman_results %>%
                         cor_nee_reco_pos = "NEE vs Reco")
   )
 
-# ---- Step 2: Plot the bar chart ----
 ggplot(spearman_long, aes(x = factor(mm, levels = 1:12), y = correlation, fill = comparison)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 1) +
   scale_fill_manual(values = c(
