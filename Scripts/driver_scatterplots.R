@@ -304,11 +304,19 @@ mod_mm_rf <- function(x) {
 mm_rf_results <- lapply(mm_split_dat, mod_mm_rf)
 
 mm_mod_list <- lapply(mm_rf_results, \(x) x$summary)
-saveRDS(mm_rf_results, "./Data/mm_rf_results.RDS")
+#saveRDS(mm_rf_results, "./Data/mm_rf_results.RDS")
+
+
+
+#filter to just summer months (jun - sept)
+mm_mod_list <- mm_mod_list[6:9]
+
+
 
 all_diff_avg_gpp <- unlist(lapply(mm_mod_list, \(df) df$diff_avg_gpp))
 overall_min <- min(all_diff_avg_gpp, na.rm = TRUE)
 overall_max <- max(all_diff_avg_gpp, na.rm = TRUE)
+
 
 
 
@@ -340,17 +348,17 @@ plot_gpp_difference <- function(df, month_num) {
       legend.text = element_text(size = 12),
       legend.title = element_text(size = 12)
     ) +
-    guides(fill = guide_colorbar(barwidth = 6, barheight = 1)) +
+    guides(fill = guide_colorbar(barwidth = 1, barheight = 6)) +
     labs(title = month.name[month_num])
 }
 # Get numeric month values from names of mm_mod_list
 plot_list <- Map(plot_gpp_difference, mm_mod_list, as.integer(names(mm_mod_list)))
 
-final_plot <- wrap_plots(plot_list, ncol = 6) +  # Adjust ncol as needed
+final_plot <- wrap_plots(plot_list, ncol = 1) +
   plot_layout(guides = "collect") &
-  theme(legend.position = "bottom")
+  theme(legend.position = "left")
 
-final_plot +
+MR_stacked_plot <- final_plot +
   plot_annotation(title = "Directional Residual GPP (Predicted - Observed)") +
   theme(text = element_text(color = "black"))
 

@@ -85,6 +85,11 @@ mm_dat_long <- mm_dat %>%
 # --- Step 3: Merge the two datasets ---
 combd_df <- inner_join(dir_dat_avg, mm_dat_long, by = c("mm", "direction"))
 
+#filter combd_df for summer
+combd_df <- combd_df%>%
+  filter(mm %in% 6:9)
+
+
 # Z-scores 
 combd_df_zscores <- combd_df %>%
   select(-direction) %>%
@@ -109,14 +114,35 @@ r2_chm <- summary(lm_chm)$r.squared
 lm_cover <- lm(gpp ~ Cover, data = combd_df_zscores)
 r2_cover <- summary(lm_cover)$r.squared
 
+# Extract p-values from the summary of each model
+p_ndvi <- summary(lm_ndvi)$coefficients[2, 4]   # p-value for NDVI slope
+p_chm <- summary(lm_chm)$coefficients[2, 4]     # p-value for CHM slope
+p_cover <- summary(lm_cover)$coefficients[2, 4] # p-value for Cover slope
+
+# Print p-values
+cat("P-value for NDVI:", p_ndvi, "\n")
+cat("P-value for Canopy Height:", p_chm, "\n")
+cat("P-value for Cover:", p_cover, "\n")
+
+sig_label <- function(p) {
+  if (p < 0.001) return("***")
+  else if (p < 0.01) return("**")
+  else if (p < 0.05) return("*")
+  else return("ns")  # not significant
+}
+
+
+
+
 # Plot 1: GPP vs NDVI
 p1 <- ggplot(combd_df_zscores, aes(x = NDVI, y = gpp)) +
-  geom_point(color = "black", size = 0.8) +
+  geom_point(color = "black", size = 1.5) +
   geom_smooth(method = "lm", se = FALSE, color = "maroon") +
-  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_ndvi, 2)),
-           hjust = 1.1, vjust = 1.5, size = 5) +
-  labs(x = "NDVI", y = "GPP") +
-  theme_minimal() +
+  annotate("text", x = Inf, y = Inf, 
+           label = paste0("R² = ", round(r2_ndvi, 2), sig_label(p_ndvi),"\n"),
+           hjust = 1.1, vjust = 1.5, size = 5)+
+  labs(x = "NDVI", y = "") +
+  theme_classic() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
@@ -127,12 +153,13 @@ p1 <- ggplot(combd_df_zscores, aes(x = NDVI, y = gpp)) +
 
 # Plot 2: GPP vs Canopy Height
 p2 <- ggplot(combd_df_zscores, aes(x = CHM, y = gpp)) +
-  geom_point(color = "black", size = 0.8) +
+  geom_point(color = "black", size = 1.5) +
   geom_smooth(method = "lm", se = FALSE, color = "maroon") +
-  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_chm, 2)),
-           hjust = 1.1, vjust = 1.5, size = 5) +
+  annotate("text", x = Inf, y = Inf, 
+                   label = paste0("R² = ", round(r2_chm, 2), sig_label(p_chm),"\n"),
+                   hjust = 1.1, vjust = 1.5, size = 5) +
   labs(x = "Canopy Height", y = "GPP") +
-  theme_minimal() +
+  theme_classic() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
@@ -143,12 +170,13 @@ p2 <- ggplot(combd_df_zscores, aes(x = CHM, y = gpp)) +
 
 # Plot 3: GPP vs Cover
 p3 <- ggplot(combd_df_zscores, aes(x = Cover, y = gpp)) +
-  geom_point(color = "black", size = 0.8) +
-  geom_smooth(method = "lm", se = FALSE, color = "maroon") +
-  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_cover, 2)),
+  geom_point(color = "black", size = 1.5) +
+  #geom_smooth(method = "lm", se = FALSE, color = "maroon") +
+  annotate("text", x = Inf, y = Inf, 
+           label = paste0("R² = ", round(r2_cover, 2), "\n"),
            hjust = 1.1, vjust = 1.5, size = 5) +
-  labs(x = "Canopy Cover", y = "GPP") +
-  theme_minimal() +
+  labs(x = "Canopy Cover", y = "") +
+  theme_classic() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
@@ -167,20 +195,26 @@ grid.arrange(p2, p3, p1, ncol = 3)
 # Fit linear model for GPP vs TWI
 lm_twi <- lm(TWI ~ gpp, data = combd_df_zscores)
 r2_twi <- summary(lm_twi)$r.squared
+p_twi <- summary(lm_cover)$coefficients[2, 4] # p-value for Cover slope
+cat("P-value for twi:", p_twi, "\n")
 
 # Create plot with updated point size and R² annotation
-twi_plot <- ggplot(combd_df_zscores, aes(x = gpp, y = TWI)) +
-  geom_point(color = "black", size = 0.8) +
-  geom_smooth(method = "lm", se = FALSE, color = "maroon") +
-  annotate("text", x = Inf, y = Inf, label = paste0("R² = ", round(r2_twi, 2)),
+twi_plot <- ggplot(combd_df_zscores, aes(x = TWI, y = gpp)) +
+  geom_point(color = "black", size = 1.5) +
+  #geom_smooth(method = "lm", se = FALSE, color = "maroon") +
+  annotate("text", x = Inf, y = Inf, 
+           label = paste0("R² = ", round(r2_cover, 2), "\n"),
            hjust = 1.1, vjust = 1.5, size = 5) +
-  labs(x = "GPP", y = "TWI") +
-  theme_minimal() +
+  labs(x = "TWI", y = "") +
+  theme_classic() +
   theme(
     text = element_text(color = "black"),
     legend.position = "none",
     plot.title = element_text(hjust = 0.5),
     axis.title = element_text(size = 14),
     axis.text = element_text(size = 12)
-  ) +
-  ggtitle("")
+  )
+#===============================================================================
+# add twi to veg scatters
+#===============================================================================
+grid.arrange(p2, p1, p3, twi_plot, ncol = 4)

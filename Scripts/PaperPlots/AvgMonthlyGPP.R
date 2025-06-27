@@ -62,6 +62,11 @@ month_split <- map2(month_split, month_abbr, function(df, abbr) {
     select(-mm)
 })
 
+#filter to summer months==================
+month_split <- month_split[6:9]
+#========================================
+
+
 # Merge all months
 plot_df <- reduce(month_split, full_join, by = "direction")
 plot_df <- plot_df[1:18,]
@@ -100,8 +105,10 @@ create_monthly_gpp_plot <- function(month_abbr, month_full) {
 }
 
 # ---- Set up months
-month_abbr <- month.abb  # Jan, Feb, etc
+month_abbr <- month_abb
+month_abbr <- c("Jun", "Jul", "Aug", "Sep")  # Jan, Feb, etc
 month_full <- month.name # January, February, etc
+month_full <- c("June", "July", "August", "September")
 
 # ---- Create list of plots
 plots <- Map(create_monthly_gpp_plot, month_abbr, month_full)
@@ -111,4 +118,5 @@ final_plot <- wrap_plots(plots, ncol = 6) &
   theme(legend.position = "bottom")
 
 # ---- Display
-final_plot + plot_annotation(title = "Average Directional GPP (µmolCO2 m-2 s-1)")
+GPP_plot <- final_plot + plot_annotation(title = "Average Directional GPP (µmolCO2 m-2 s-1)")
+

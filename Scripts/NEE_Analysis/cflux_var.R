@@ -116,14 +116,33 @@ rankdif_long <- rank_difs %>%
                            nee_gpp_diff = "GPP - NEE",
                            nee_reco_diff = "Reco - NEE"))
 
+Var_names <- c("GPP", "NEE", "Ecosystem Respiration")
+var_labels <- setNames(Var_names, unique(rank_long$variable))
+breaks = range(rank_long$rank, na.rm = TRUE)
 
 heatmap_raw <- ggplot(rank_long, aes(x = as.factor(mm), y = dir_group, fill = rank)) +
   geom_tile() +
-  facet_wrap(~ variable) +
-  scale_fill_viridis_c(option = "C", direction = -1, name = "Rank") +
-  labs(x = "Month", y = "Wind Direction",
-       title = "Directional Rank of Carbon Fluxes by Month") +
-  theme_minimal(base_size = 14)
+  facet_wrap(~ variable, labeller = labeller(variable = var_labels)) +
+  scale_fill_viridis_c(
+    option = "C",
+    direction = -1,
+    name = "Rank",
+    breaks = range(rank_long$rank, na.rm = TRUE)  # Show only min and max
+  ) +
+  labs(x = "Month", y = "Wind Direction", title = "") +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text = element_text(size = 15, angle = 0, hjust = 0.5),
+    axis.title = element_text(size = 17),
+    strip.text = element_text(size = 20),
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 17)
+  )
+
+heatmap_raw
+
+
+
 
 heatmap_diff <- ggplot(rankdif_long, aes(x = as.factor(mm), y = dir_group, fill = rank)) +
   geom_tile() +
@@ -186,29 +205,28 @@ spearman_long <- spearman_results %>%
                values_to = "correlation") %>%
   mutate(
     comparison = recode(comparison,
-                        cor_gpp_nee = "GPP vs NEE",
-                        cor_nee_reco_pos = "NEE vs Reco")
+                        cor_gpp_nee = "GPP and -NEE",
+                        cor_nee_reco_pos = "Respiration and NEE")
   )
 
 ggplot(spearman_long, aes(x = factor(mm, levels = 1:12), y = correlation, fill = comparison)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 1) +
   scale_fill_manual(values = c(
-    "GPP vs NEE" = "#A6CEE3",         # pastel blue
-    "NEE vs Reco" = "#F4A582"   # pastel orange
+    "GPP and -NEE" = "#A6CEE3",
+    "Respiration and NEE" = "#F4A582"
   )) +
   scale_y_continuous(
-    name = "GPP vs NEE",
+    name = "Spearman Correlation",
     limits = c(0, 1),
-    breaks = seq(0, 1, 0.2),
-    sec.axis = sec_axis(~ -., name = "NEE vs Reco", breaks = seq(-1, 0, 0.2))
+    breaks = seq(0, 1, 0.2)
   ) +
   scale_x_discrete(labels = month.abb) +
   labs(
-    title = "Spearman Correlations by Month",
+    title = "",
     x = "Month",
     fill = NULL
   ) +
-  theme_minimal(base_size = 15) +
+  theme_classic(base_size = 15) +
   theme(
     legend.position = "bottom",
     axis.title.y.left = element_text(color = "black"),

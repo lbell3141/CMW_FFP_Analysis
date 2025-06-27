@@ -53,7 +53,8 @@ dat_voi <- dat_voi %>%
 
 #filter for lidar flight time
 dat_voi <- dat_voi%>%
-  filter(mm == 7)
+  filter(mm == 7,
+         yyyy == 2021)
 
 dir_dat_avg <- dat_voi %>%
   mutate(
@@ -140,7 +141,7 @@ p4 <- ggplot(combd, aes(x = x, y = y, fill = direction)) +
   labs(fill = "Photosynthetic Capacity\n(μmol CO2 m-2 leaf area)") +
   theme(
     legend.position = "bottom",
-    legend.title = element_text(size = 14, hjust = 0.5, margin = margin(b = 10)),  # Increase margin to raise the title
+    legend.title = element_text(size = 14, hjust = 0.5),  # Increase margin to raise the title
     legend.title.position = "top",
     legend.text = element_text(size = 10),
     legend.key.width = unit(1, "cm"),
@@ -172,7 +173,7 @@ p3 <- ggplot(sec_lai, aes(x = direction, y = 5, fill = lai)) +
     legend.position = "right",
     panel.background = element_blank(),
     plot.background = element_blank(),
-    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),  # Increase margin to raise the title
+    legend.title = element_text(size = 16, hjust = 0.5),  # Increase margin to raise the title
     legend.title.position = "top",
     legend.text = element_text(size = 13)
   ) +
@@ -202,7 +203,7 @@ p2 <- ggplot(sec_PC, aes(x = direction, y = 5, fill = PC)) +
     legend.position = "right",
     panel.background = element_blank(),
     plot.background = element_blank(),
-    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),  # Increase margin to raise the title
+    legend.title = element_text(size = 16, hjust = 0.5),  # Increase margin to raise the title
     legend.title.position = "top",
     legend.text = element_text(size = 13)
   ) +
@@ -232,7 +233,7 @@ p1 <- ggplot(sec_gpp, aes(x = direction, y = 5, fill = gpp)) +
     legend.position = "right",
     panel.background = element_blank(),
     plot.background = element_blank(),
-    legend.title = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),  # Increase margin to raise the title
+    legend.title = element_text(size = 16, hjust = 0.5),  # Increase margin to raise the title
     legend.title.position = "top",
     legend.text = element_text(size = 13)
   ) +
@@ -249,7 +250,7 @@ legend_p4 <- ggpubr::get_legend(
     theme_void() +
     theme(
       legend.position = "bottom",
-      legend.title = element_text(size = 14, hjust = 0.5, margin = margin(b = 10)),
+      legend.title = element_text(size = 14, hjust = 0.5),
       legend.title.position = "top",
       legend.text = element_text(size = 13),
       legend.key.width = unit(2, "cm"),
@@ -299,7 +300,7 @@ p3 <- ggplot(sec_lai, aes(x = direction, y = 5, fill = lai)) +
     breaks = range(sec_lai$lai, na.rm = TRUE),
     labels = function(x) sprintf("%.1f", x)
   ) +
-  labs(fill = "LAI\n") +
+  labs(fill = "\nLAI\n") +
   theme_minimal() +
   theme(
     axis.title = element_blank(),
@@ -329,7 +330,7 @@ p2 <- ggplot(sec_PC, aes(x = direction, y = 5, fill = PC)) +
     breaks = range(sec_PC$PC, na.rm = TRUE),
     labels = function(x) sprintf("%.1f", x)
   ) +
-  labs(fill = "PC\n") +
+  labs(fill = "Photosynthetic\nCapacity\n") +
   theme_minimal() +
   theme(
     axis.title = element_blank(),
@@ -359,7 +360,7 @@ p1 <- ggplot(sec_gpp, aes(x = direction, y = 5, fill = gpp)) +
     breaks = range(sec_gpp$gpp, na.rm = TRUE),
     labels = function(x) sprintf("%.1f", x)
   ) +
-  labs(fill = "GPP\n") +
+  labs(fill = "\nGPP\n") +
   theme_minimal() +
   theme(
     axis.title = element_blank(),
@@ -371,8 +372,9 @@ p1 <- ggplot(sec_gpp, aes(x = direction, y = 5, fill = gpp)) +
     legend.title = element_text(size = 16, hjust = 0.5, margin = margin(t = -20)),
     legend.text = element_text(size = 12),
     legend.title.position = "top"
-  ) +
+  )+
   guides(fill = guide_colorbar(barwidth = 3.5, barheight = 1))
 
 #=================== Combine all ===================
 (p1 | p3 | p2) 
+

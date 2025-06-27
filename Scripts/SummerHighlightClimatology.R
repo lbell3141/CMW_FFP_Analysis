@@ -35,7 +35,7 @@ plot_dat <- plot_dat %>%
   arrange(doy) %>%
   mutate(gpp_roll = rollmean(avg_gpp, k = 7, fill = NA, align = "center"))
 
-ggplot(plot_dat, aes(x = doy)) +
+climatology_plot <- ggplot(plot_dat, aes(x = doy)) +
   
   geom_ribbon(aes(ymin = avg_gpp - se_gpp, ymax = avg_gpp + se_gpp), 
               fill = "grey", alpha = 0.4) +
@@ -44,11 +44,12 @@ ggplot(plot_dat, aes(x = doy)) +
   geom_line(aes(y = avg_gpp), color = "black", size = 0.8) +
   #geom_line(aes(y = gpp_roll), color = "black", size = 1) +
   labs(
-    x = "Day of Year",
-    y = "Average GPP",
-    title = "",
-  ) +
-  theme_minimal(base_size = 14)
+    x = "",
+    y = "",
+    title = "")+
+  theme_classic()+
+  theme(axis.text = element_text(size = 15))
 
+climatology_plot
 
 
