@@ -94,8 +94,8 @@ avg_flux_ranks <- avg_dat_flux %>%
   ) %>%
   ungroup()
 rank_difs <- avg_flux_ranks%>%
-  mutate(nee_gpp_diff = nee_rank - gpp_rank,
-         nee_reco_diff = nee_rank - reco_rank)
+  mutate(nee_gpp_diff = gpp_rank - nee_rank,
+         nee_reco_diff = reco_rank - nee_rank)
 
 
 #----------plot heat map-----------------
@@ -113,8 +113,8 @@ rankdif_long <- rank_difs %>%
                names_to = "variable",
                values_to = "rank") %>%
   mutate(variable = recode(variable,
-                           nee_gpp_diff = "NEE - GPP",
-                           nee_reco_diff = "NEE - Reco"))
+                           nee_gpp_diff = "GPP - NEE",
+                           nee_reco_diff = "Reco - NEE"))
 
 
 heatmap_raw <- ggplot(rank_long, aes(x = as.factor(mm), y = dir_group, fill = rank)) +
