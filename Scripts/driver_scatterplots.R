@@ -204,16 +204,6 @@ partialPlot(rf_model, dat_model, "temp_atmos", main = "Effect of Temperature on 
 partialPlot(rf_model, dat_model, "ppfd", main = "Effect of PPFD on GPP")
 
 
-#plot output
-mod_plot_dat <- dat_model%>%
-  mutate(pred_gpp = rf_model$predicted)%>%
-  group_by(mm, dir_group)%>%
-  summarize(across(c(gpp, pred_gpp), mean, na.rm = TRUE), .groups = "drop")%>%
-  mutate(diff_gpp = gpp - pred_gpp)
-
-
-
-
 mod_plot_dat <- dat_model %>%
   mutate(pred_gpp = rf_model$predicted) %>%
   group_by(mm, dir_group) %>%
@@ -355,13 +345,12 @@ plot_gpp_difference <- function(df, month_num) {
 }
 # Get numeric month values from names of mm_mod_list
 plot_list <- Map(plot_gpp_difference, mm_mod_list, as.integer(names(mm_mod_list)))
-library(patchwork)
 
 final_plot <- wrap_plots(plot_list, ncol = 6) +  # Adjust ncol as needed
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
 final_plot +
-  plot_annotation(title = "Directional Residual GPP (Observed - Predicted)") +
+  plot_annotation(title = "Directional Residual GPP (Predicted - Observed)") +
   theme(text = element_text(color = "black"))
 
