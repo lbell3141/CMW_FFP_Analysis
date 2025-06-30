@@ -55,31 +55,36 @@ dat_flux <- dat_voi %>%
 avg_dat_flux <- dat_flux%>%
   group_by(mm, dir_group)%>%
   summarise(across(c(gpp, nee, reco), mean, na.rm = TRUE), .groups = "drop")
-  
+
+
+avg_dat_flux <- avg_dat_flux%>%
+  filter(mm %in% 6:9)
+
+
 monthly_cv_summary <- avg_dat_flux%>%
   group_by(mm) %>%
   summarise(
-    gpp_cv = (sd(gpp, na.rm = TRUE) / mean(gpp, na.rm = TRUE)) * 100,
-    nee_cv = (sd(nee, na.rm = TRUE) / mean(nee, na.rm = TRUE)) * 100,
-    reco_cv = (sd(reco, na.rm = TRUE) / mean(reco, na.rm = TRUE)) * 100,
+   GPP = (sd(gpp, na.rm = TRUE) / mean(gpp, na.rm = TRUE)) * 100,
+    NEE = (sd(nee, na.rm = TRUE) / mean(nee, na.rm = TRUE)) * 100,
+    Respiration = (sd(reco, na.rm = TRUE) / mean(reco, na.rm = TRUE)) * 100,
     .groups = "drop"
   )
 
 # Convert to long format for plotting
 cv_long <- monthly_cv_summary %>%
-  pivot_longer(cols = c(gpp_cv, nee_cv, reco_cv),
-               names_to = "variable", values_to = "cv")
+  pivot_longer(cols = c(GPP, NEE, Respiration),
+               names_to = "variable", values_to = "cv")%>%
+  mutate(variable = factor(variable, levels = c("NEE", "GPP", "Respiration")))
 
 # Plot
 ggplot(cv_long, aes(x = mm, y = abs(cv), color = variable)) +
   geom_line(size = 1.2) +
-  geom_point(size = 2) +
+  geom_point(size = 4) +
+  scale_color_viridis_d()+
   scale_x_continuous(breaks = 1:12, labels = month.abb) +
-  labs(x = "Month", y = "Percent Directional Variability (CV%)",
-       title = "Monthly Directional Variability in Fluxes",
-       color = "Flux") +
-  scale_color_viridis_d(option = "C") +
-  theme_minimal(base_size = 14)
+  labs(x = "Month", y = "%CV", title = "", color = "") +
+  theme_classic(base_size = 14)
+
 
 
 #===============================================================================
