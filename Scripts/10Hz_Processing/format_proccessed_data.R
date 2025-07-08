@@ -64,21 +64,22 @@ combd_dat <- merge(site_dat, proc_dat, by = "TIMESTAMP_END")
 #===============================================================================
 #============================prep data for ffp calc=============================
 #===============================================================================
-combd_dat <- read.csv("./Data/combined_CMdata.csv")
+combd_dat <- combd_dat %>%
+  mutate(TIMESTAMP_END = ymd_hms(TIMESTAMP_END))
+
 #format df for ffp calc
 meas_h <- 14
 d <- (2/3) * meas_h
 bound_h <- 1000
 
-all_clim_dat <- combd_dat %>%
-  summarize(
+all_clim_data <- combd_dat %>%
+  reframe(
     yyyy = year(TIMESTAMP_END),
     mm = month(TIMESTAMP_END),
     day = day(TIMESTAMP_END),
     HH_UTC = hour(TIMESTAMP_END),
     MM = minute(TIMESTAMP_END),
     zm = meas_h - d,
-    z0 = NaN,
     umean = mean(WS_1_1_1, na.rm = TRUE),
     h = bound_h,
     ol = (-((USTAR^3) * (TA_1_1_1 + 273)) / (0.4 * 9.8 * (H / (1.25 * 1004)))),
@@ -86,18 +87,29 @@ all_clim_dat <- combd_dat %>%
     ustar = USTAR,
     wind_dir = WD_1_1_1,
     test = zm/ol)
-all_clim_dat <- all_clim_dat%>%
+all_clim_dat <- all_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
-  filter(across(everything(), ~ . != "NA"))%>%
+  filter(if_all(everything(), ~ !is.na(.)))%>%
   filter(HH_UTC %in% 8:17)%>%
-  filter(yyyy %in% 2015:2019)
+  filter(yyyy == 2021,
+         mm %in% 6:9)
+all_clim_dat <- all_clim_dat%>%
+  mutate(z0 = NaN)
 
 #split into separate wind directions bins of 10 degrees
-deg_int <- seq(0, 360, by = 10)
-split_dat <- split(all_clim_dat, cut(all_clim_dat$wind_dir, deg_int, include.lowest = TRUE, labels = FALSE))
+deg_int <- seq(0, 360, by = 20)
+all_clim_dat$dir_bin <- cut(
+  all_clim_dat$wind_dir,
+  breaks = deg_int,
+  include.lowest = TRUE,
+  right = FALSE,  # intervals like [0,20)
+  labels = head(deg_int, -1)  # use lower bounds as labels
+)
+split_dat <- split(all_clim_dat, all_clim_dat$dir_bin)
 
-#filter by season/month for ffp input data
-dec_split_dat <- lapply(split_dat, function(df) {
-  df %>% filter(mm == 12)
+sep_split_dat <- lapply(split_dat, function(df) {
+  df %>% filter(mm == 9)
 })
+
+
