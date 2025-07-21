@@ -48,9 +48,9 @@ ffp_contours_to_mask <- function(xr_list, yr_list, rast) {
   }
   
   valid_lines <- lines_list[!sapply(lines_list, function(x) is.na(x)[1])]
-  if (length(valid_lines) < 9) return(NA)
+  if (length(valid_lines) < 10) return(NA)
   
-  part_con_list <- list(valid_lines[[3]], valid_lines[[6]], valid_lines[[9]])
+  part_con_list <- list(valid_lines[[4]], valid_lines[[7]], valid_lines[[10]])
   
   masked_rast <- lapply(part_con_list, function(l) mask(rast, l))
   
@@ -83,8 +83,8 @@ lai <- rast("./Data/LiDAR/LAI.tif")
 lai <- project(lai, crs(ref_rast), method = "bilinear")
 
 # Choose which raster to extract
-raster_data_name <- "LAI"
-rast_data <- lai  # or lai, or canopy_num
+raster_data_name <- "CHM"
+rast_data <- chm  # or lai, or canopy_num
 
 #===============================================================================
 # Loop over FFP files and extract weighted values into a tidy dataframe
@@ -121,18 +121,18 @@ for (file in ffp_objs) {
 #===============================================================================
 # Save final dataframe
 #===============================================================================
-#saveRDS(output_df, file = paste0("./Data/monthly_directional_ffps/summer2021/dfs/ffp_", raster_data_name, "_values_df.rds"))
+saveRDS(output_df, file = paste0("./Data/monthly_directional_ffps/summer2021/testffps/ffp_", raster_data_name, "_values_df.rds"))
 
-cover_df <- readRDS("./Data/monthly_directional_ffps/summer2021/dfs/ffp_Cover_values_df.RDS")%>%
+cover_df <- readRDS("./Data/monthly_directional_ffps/summer2021/testffps/ffp_Cover_values_df.RDS")%>%
   rename(Cover = value)
-height_df <- readRDS("./Data/monthly_directional_ffps/summer2021/dfs/ffp_Height_values_df.RDS")%>%
+height_df <- readRDS("./Data/monthly_directional_ffps/summer2021/testffps/ffp_CHM_values_df.RDS")%>%
   rename(Height = value)
-TWI_df <- readRDS("./Data/monthly_directional_ffps/summer2021/dfs/ffp_TWI_values_df.RDS")%>%
+TWI_df <- readRDS("./Data/monthly_directional_ffps/summer2021/testffps/ffp_TWI_values_df.RDS")%>%
   rename(TWI = value)
-LAI_df <- readRDS("./Data/monthly_directional_ffps/summer2021/dfs/ffp_LAI_values_df.RDS")%>%
+LAI_df <- readRDS("./Data/monthly_directional_ffps/summer2021/testffps/ffp_LAI_values_df.RDS")%>%
   rename(LAI = value)
-#NDVI_df <- readRDS("./Data/monthly_directional_ffps/summer2021/dfs/ffp_NDVI_values_df.RDS")%>%
-rename(NDVI = value)
+#NDVI_df <- readRDS("./Data/monthly_directional_ffps/summer2021/testffps/ffp_NDVI_values_df.RDS")%>%
+#rename(NDVI = value)
 
 df1 <- merge(cover_df, height_df, by = c("month", "direction"))
 df2 <- merge(df1, TWI_df, by = c("month", "direction"))
@@ -167,6 +167,6 @@ gpp_df <- gpp_yr %>%
 #combine with geos data frame
 
 full_summer_frame <- merge(gpp_df, full_geos_frame, by= c("month", "direction"))
-saveRDS(full_summer_frame, file = paste0("./Data/monthly_directional_ffps/summer2021/dfs/full_summer_frame.rds"))
+saveRDS(full_summer_frame, file = paste0("./Data/monthly_directional_ffps/summer2021/testffps/full_summer_frame.rds"))
 
 
