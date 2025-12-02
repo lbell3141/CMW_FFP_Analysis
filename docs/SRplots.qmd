@@ -1,0 +1,29 @@
+SRG plots
+
+![](images/Rplot.svg)
+
+![](images/Rplot01.svg)
+
+![](images/Rplot02.svg)
+
+![](images/Rplot03-01.svg)
+
+SRM plots
+
+![](images/Rplot-01.svg)
+
+![](images/Rplot03.svg)
+
+![](images/Rplot01-01.svg)
+
+![](images/Rplot04.svg)
+
+Wkg plots
+
+![](images/wkgCircs.png)
+
+![](images/wkgGPPcircs.png)
+
+![](images/wkgHeatmap.png)
+
+![](images/wkgModelCircs.png)
