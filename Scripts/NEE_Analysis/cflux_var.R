@@ -110,7 +110,7 @@ rank_long <- avg_flux_ranks %>%
                values_to = "rank") %>%
   mutate(variable = recode(variable,
                            gpp_rank = "GPP",
-                           nee_rank = "NEE",
+                           nee_rank = "-NEE",
                            reco_rank = "R_Eco"))
 
 rankdif_long <- rank_difs %>%
@@ -120,10 +120,10 @@ rankdif_long <- rank_difs %>%
   mutate(variable = recode(variable,
                            nee_gpp_diff = "GPP - NEE",
                            nee_reco_diff = "Reco - NEE"))
+rank_long$variable <- factor(rank_long$variable, levels = c("GPP", "-NEE", "R_Eco"))
 
-Var_names <- c("GPP", "NEE", "Ecosystem Respiration")
+Var_names <- c("GPP", "-NEE", "Ecosystem Respiration")
 var_labels <- setNames(Var_names, unique(rank_long$variable))
-breaks = range(rank_long$rank, na.rm = TRUE)
 
 heatmap_raw <- ggplot(rank_long, aes(x = as.factor(mm), y = dir_group, fill = rank)) +
   geom_tile() +
@@ -132,7 +132,7 @@ heatmap_raw <- ggplot(rank_long, aes(x = as.factor(mm), y = dir_group, fill = ra
     option = "C",
     direction = -1,
     name = "Rank",
-    breaks = range(rank_long$rank, na.rm = TRUE)  # Show only min and max
+    breaks = range(rank_long$rank, na.rm = TRUE)
   ) +
   labs(x = "Month", y = "Wind Direction", title = "") +
   theme_minimal(base_size = 13) +
@@ -145,6 +145,7 @@ heatmap_raw <- ggplot(rank_long, aes(x = as.factor(mm), y = dir_group, fill = ra
   )
 
 heatmap_raw
+
 
 
 

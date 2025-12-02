@@ -1,4 +1,4 @@
-geos_dat <- readRDS("./Data/monthly_directional_ffps/summer2021/dfs/full_summer_frame.RDS")
+geos_dat <- readRDS("./Data/monthly_directional_ffps/summer2021/testffps/full_summer_frame.RDS")
 
 #make a df of zscores for plotting for each month and direction combo
 
@@ -16,9 +16,11 @@ geos_zscores <- geos_dat %>%
     .names = "{.col}_z"
   )) %>%
   ungroup()
+
 geos_zscores$direction <- as.numeric(as.character(geos_zscores$direction))
 geos_zscores <- geos_zscores %>%
-  arrange(month, direction)
+  arrange(month, direction)%>%
+  filter(month == "Jul")
 
 #_-_-_-_-_-_-_-_-_-_-__-_-_-_-_-_-_-_-_-_-__-_-_-_-_-_-_-_-_-_-__-_-_-_-_-_-_-_-
 
@@ -52,7 +54,7 @@ p_lai <- ggplot(geos_zscores, aes(x = LAI_z, y = observed_gpp_z)) +
   annotate("text", x = Inf, y = Inf, 
            label = paste0("R² = ", round(r2_lai, 2), sig_label(p_lai), "\n"),
            hjust = 1.1, vjust = 1.5, size = 5) +
-  labs(x = "LAI", y = "Residual GPP") +
+  labs(x = "LAI", y = "Observed GPP") +
   theme_classic() +
   theme(
     text = element_text(color = "black"),
@@ -105,16 +107,19 @@ grid.arrange(p_lai, p_cover, p_height, ncol = 3)
 lm_lai <- lm(residual_gpp_z ~ LAI_z, data = geos_zscores)
 lm_cover <- lm(residual_gpp_z ~ Cover_z, data = geos_zscores)
 lm_height <- lm(residual_gpp_z ~ Height_z, data = geos_zscores)
+lm_twi <- lm(residual_gpp_z ~ TWI_z, data = geos_zscores)
 
 # Extract R²
 r2_lai <- summary(lm_lai)$r.squared
 r2_cover <- summary(lm_cover)$r.squared
 r2_height <- summary(lm_height)$r.squared
+r2_twi <- summary(lm_twi)$r.squared
 
 # Extract p-values for slope
 p_lai <- summary(lm_lai)$coefficients[2, 4]
 p_cover <- summary(lm_cover)$coefficients[2, 4]
 p_height <- summary(lm_height)$coefficients[2, 4]
+p_twi <- summary(lm_twi)$coefficients[2, 4]
 
 # Significance label function
 sig_label <- function(p) {
@@ -171,6 +176,23 @@ p_height <- ggplot(geos_zscores, aes(x = Height_z, y = residual_gpp_z)) +
     axis.title = element_text(size = 14),
     axis.text = element_text(size = 12)
   )
+
+# Plot TWI
+p_twi <- ggplot(geos_zscores, aes(x = TWI_z, y = residual_gpp_z)) +
+  geom_point(color = "black", size = 1.5) +
+  #geom_smooth(method = "lm", se = FALSE, color = "maroon") +
+  annotate("text", x = Inf, y = Inf, 
+           label = paste0("R² = ", round(r2_twi, 2), sig_label(p_twi), "\n"),
+           hjust = 1.1, vjust = 1.5, size = 5) +
+  labs(x = "TWI", y = "Residual GPP") +
+  theme_classic() +
+  theme(
+    text = element_text(color = "black"),
+    legend.position = "none",
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12)
+  )
+
 
 # Arrange plots in one row
 grid.arrange(p_lai, p_cover, p_height, ncol = 3)

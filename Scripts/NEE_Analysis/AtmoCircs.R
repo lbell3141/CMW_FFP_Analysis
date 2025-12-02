@@ -8,6 +8,7 @@ library(plantecophys)
 library(ggplot2)
 library(viridis)
 library(patchwork)
+library(tidyr)
 
 # Load data
 dat_file <- read.csv("./Data/AMF_US-CMW_BASE_HH_2-5.csv", na.strings = "-9999", skip = 2) %>%
@@ -26,7 +27,7 @@ dat_voi <- dat_file %>%
     temp_atmos = TA_1_1_1,
     u_star = USTAR,
     wind_dir = WD_1_1_1,
-    nee = NEE_PI,
+    gpp = GPP_PI,
     precip = P,
     rel_h = RH_1_1_1,
     VPD = RHtoVPD(RH_1_1_1, TA_1_1_1, PA),
@@ -34,7 +35,7 @@ dat_voi <- dat_file %>%
     le = LE,
     swc = SWC_PI_1_1_A
   ) %>%
-  filter(HH_UTC >= 8 & HH_UTC <= 17)
+   filter(HH_UTC >= 8 & HH_UTC <= 17)
 
 # Bin wind direction into 20° groups
 deg_int <- seq(0, 360, by = 20)
@@ -43,7 +44,7 @@ dat_voi <- dat_voi %>%
   mutate(dir_group = cut(wind_dir, breaks = deg_int, include.lowest = TRUE, labels = deg_labels))
 
 # Variables and months
-vars <- c("nee", "temp_atmos", "swc", "ppfd", "wind_sp", "precip", "rel_h")
+vars <- c("gpp", "temp_atmos", "swc", "ppfd", "wind_sp", "rel_h")
 months_to_plot <- 6:9
 month_abbr <- month.abb[months_to_plot]
 month_full <- month.name[months_to_plot]
@@ -108,5 +109,5 @@ for (variable_col in names(plot_df)[-1]) {  # Exclude 'direction' column
 }
 
 # Optionally combine the plots into a single layout with patchwork (e.g., 7 columns)
-combined_plot <- wrap_plots(plot_list, ncol = 7)
+combined_plot <- wrap_plots(plot_list, ncol = 6)
 combined_plot
