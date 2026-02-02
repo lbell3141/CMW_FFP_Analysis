@@ -1,0 +1,63 @@
+/*******************************
+   Pull ALL NAIP images for
+   4 sites (1000 m box),
+   export RGB + NIR.
+********************************/
+
+// --- Sites (corrected CMW) ---
+var sites = {
+  'CMW': {lat: 31.6637, lon: -110.1777},
+  'SRM': {lat: 31.8214, lon: -110.8661},
+  'SRG': {lat: 31.7894, lon: -110.8277},
+  'Wkg': {lat: 31.7365, lon: -109.9419}
+};
+
+// Box size
+var halfSide = 500; // 1000 m box → 500 m from center
+
+// NAIP dataset
+var naip = ee.ImageCollection("USDA/NAIP/DOQQ");
+
+// Build a square box around a point
+function makeBox(lat, lon, halfSideM) {
+  var pt = ee.Geometry.Point([lon, lat]);
+  return pt.buffer(halfSideM).bounds();
+}
+
+// Loop through sites
+Object.keys(sites).forEach(function(name) {
+  var s = sites[name];
+  var geom = makeBox(s.lat, s.lon, halfSide);
+
+  // Filter NAIP collection
+  var coll = naip.filterBounds(geom);
+
+  print(name, " NAIP image count:", coll.size());
+
+  // Convert to list for iteration
+  var list = coll.toList(coll.size());
+
+  // Export each image individually
+  var count = coll.size().getInfo();
+  for (var i = 0; i < count; i++) {
+
+    var img = ee.Image(list.get(i)).clip(geom);
+
+    // Date stamp for filename
+    var date = ee.Date(img.get("system:time_start"))
+                .format("YYYYMMdd")
+                .getInfo();
+
+    var fileName = "NAIP_" + name + "_" + date;
+
+    Export.image.toDrive({
+      image: img.select(["R","G","B","N"]),   // include NIR
+      description: fileName,
+      folder: "GEE_NAIP",                     // change if needed
+      fileNamePrefix: fileName,
+      region: geom,
+      scale: 1,                               // native NAIP resolution
+      maxPixels: 1e10
+    });
+  }
+});
