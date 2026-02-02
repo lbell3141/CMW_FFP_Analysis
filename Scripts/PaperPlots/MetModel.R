@@ -48,7 +48,7 @@ mm_split_dat <- split(dat_cln, dat_cln$mm)
 #===============================================================================
 
 mod_mm <- function(x) {
-  model <- lm(gpp ~ swc + temp_atmos + rel_h + ppfd + wind_sp, data = x)
+  model <- lm(gpp ~ swc + temp_atmos + rel_h + ppfd + wind_sp + HH_UTC, data = x)
   
   x %>%
     mutate(
