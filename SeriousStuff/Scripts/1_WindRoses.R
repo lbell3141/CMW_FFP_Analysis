@@ -1,218 +1,93 @@
 library(dplyr)
 library(lubridate)
-library(openair)
+library(openair) #windrose-specific package
 
+# func to read in data, format date, and pull wind data cols
+read_wind <- function(file, ws_col, wd_col, skip = 0) {
+  read.csv(file, na.strings = "-9999", skip = skip) %>%
+    mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START))) %>%
+    transmute(
+      wind_sp  = .data[[ws_col]],
+      wind_dir = .data[[wd_col]]
+    ) %>%
+    filter(!is.na(wind_sp), !is.na(wind_dir))
+}
 
-
-#CMW============================================================================
-cmwdat_file <- read.csv(
+# read in data from all 4 sites
+cmw <- read_wind(
   "./SeriousStuff/Data/AMF_US-CMW_BASE_HH_2-5.csv",
-  na.strings = "-9999",
+  ws_col = "WS_1_1_1",
+  wd_col = "WD_1_1_1",
   skip = 2
-) %>%
-  mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
-
-cmwdat_voi <- cmwdat_file %>%
-  transmute(
-    wind_sp  = WS_1_1_1,
-    wind_dir = WD_1_1_1
-  ) %>%
-  filter(
-    !is.na(wind_sp),
-    !is.na(wind_dir)
-  )
-
-png(
-  filename = "CMW_windrose_daytime.png",
-  width = 1800,
-  height = 1800,
-  res = 300,
-  bg = "transparent"
 )
 
-par(bg = NA)
-
-
-windRose(
-  mydata = cmwdat_voi,
-  ws = "wind_sp",
-  wd = "wind_dir",
-  
-  angle = 20,
-  type = "default",
-  paddle = F,
-  width = 1.1,
-  
-  cols = "jet",
-  
-  auto.text = TRUE,
-  fontsize = 15,
-  col = "white",
-  
-  key.footer = "",
-  calm = 0,
-  
-  main = "CMW"
-)
-dev.off()
-
-#SRG============================================================================
-srgdat_file <- read.csv(
+srg <- read_wind(
   "./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv",
-  na.strings = "-9999"
-) %>%
-  mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
-
-srgdat_voi <- srgdat_file %>%
-  transmute(
-    wind_sp  = WS,
-    wind_dir = WD
-  ) %>%
-  filter(
-    !is.na(wind_sp),
-    !is.na(wind_dir)
-  )
-
-png(
-  filename = "SRG_windrose_daytime.png",
-  width = 1800,
-  height = 1800,
-  res = 300,
-  bg = "transparent"
+  ws_col = "WS",
+  wd_col = "WD"
 )
 
-par(bg = NA)
-
-
-windRose(
-  mydata = srgdat_voi,
-  ws = "wind_sp",
-  wd = "wind_dir",
-  
-  angle = 20,
-  type = "default",
-  paddle = F,
-  width = 1.1,
-  
-  cols = "jet",
-  
-  auto.text = TRUE,
-  fontsize = 15,
-  col = "white",
-  
-  key.footer = "",
-  calm = 0,
-  
-  main = "SRG"
-)
-dev.off()
-
-#SRM============================================================================
-srmdat_file <- read.csv(
+srm <- read_wind(
   "./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-2024_4-7.csv",
-  na.strings = "-9999"
-) %>%
-  mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
-
-srmdat_voi <- srmdat_file %>%
-  transmute(
-    wind_sp  = WS,
-    wind_dir = WD
-  ) %>%
-  filter(
-    !is.na(wind_sp),
-    !is.na(wind_dir)
-  )
-
-png(
-  filename = "SRM_windrose_daytime.png",
-  width = 1800,
-  height = 1800,
-  res = 300,
-  bg = "transparent"
+  ws_col = "WS",
+  wd_col = "WD"
 )
 
-par(bg = NA)
-
-
-windRose(
-  mydata = srmdat_voi,
-  ws = "wind_sp",
-  wd = "wind_dir",
-  
-  angle = 20,
-  type = "default",
-  paddle = F,
-  width = 1.1,
-  
-  cols = "jet",
-  
-  auto.text = TRUE,
-  fontsize = 15,
-  col = "white",
-  
-  key.footer = "",
-  calm = 0,
-  
-  main = "SRM"
-)
-dev.off()
-
-#Wkg============================================================================
-wkgdat_file <- read.csv(
+wkg <- read_wind(
   "./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv",
-  na.strings = "-9999"
-) %>%
-  mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
+  ws_col = "WS",
+  wd_col = "WD"
+)
 
-wkgdat_voi <- wkgdat_file %>%
-  transmute(
-    wind_sp  = WS,
-    wind_dir = WD
-  ) %>%
-  filter(
-    !is.na(wind_sp),
-    !is.na(wind_dir)
+#combine frames together
+all_wind <- bind_rows(cmw, srg, srm, wkg)
+
+max_ws <- ceiling(max(all_wind$wind_sp, na.rm = TRUE))
+
+# Define shared bins (tweak as you like)
+ws_breaks <- c(0, 2, 4, 8, 10, max_ws)
+
+
+plot_windrose <- function(data, site, outfile, breaks) {
+  png(
+    filename = outfile,
+    width = 1800,
+    height = 1800,
+    res = 300,
+    bg = "white"
   )
-
-png(
-  filename = "Wkg_windrose_daytime.png",
-  width = 1800,
-  height = 1800,
-  res = 300,
-  bg = "transparent"
-)
-
-par(bg = NA)
-
-
-windRose(
-  mydata = wkgdat_voi,
-  ws = "wind_sp",
-  wd = "wind_dir",
   
-  angle = 20,
-  type = "default",
-  paddle = F,
-  width = 1.1,
+  par(bg = NA)
   
-  cols = "jet",
+  windRose(
+    mydata = data,
+    ws = "wind_sp",
+    wd = "wind_dir",
+    
+    angle = 20,
+    type = "default",
+    paddle = FALSE,
+    width = 1.1,
+    
+    breaks = breaks,
+    cols = "jet",
+    
+    auto.text = TRUE,
+    fontsize = 15,
+    col = "white",
+    
+    key.footer = "",
+    key.width = 3,
+    calm = 0,
+    
+    main = site
+  )
   
-  auto.text = TRUE,
-  fontsize = 15,
-  col = "white",
-  
-  key.footer = "",
-  calm = 0,
-  
-  main = "Wkg"
-)
-dev.off()
+  dev.off()
+}
 
 
-
-
-
-
-
-
+plot_windrose(cmw, "CMW", "CMW_windrose_daytime.png", ws_breaks)
+plot_windrose(srg, "SRG", "SRG_windrose_daytime.png", ws_breaks)
+plot_windrose(srm, "SRM", "SRM_windrose_daytime.png", ws_breaks)
+plot_windrose(wkg, "Wkg", "Wkg_windrose_daytime.png", ws_breaks)
