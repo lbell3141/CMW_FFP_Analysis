@@ -1,4 +1,4 @@
-#predict avg footprint for all four sites + visualize
+#generate ffp maps in 18 directions for each site
 
 source("./Scripts/kljun_code/calc_footprint_FFP_climatology.R")
 
@@ -9,6 +9,14 @@ library(terra)
 library(dplyr)
 library(lubridate)
 library(raster)
+
+deg_int <- seq(0, 360, by = 20)
+
+#lists for FFP results
+cmwffp_list <- list()
+srgffp_list <- list()
+srmffp_list <- list()
+wkgffp_list <- list()
 
 #create another function: pulls out variables instead of naming every time for ffp calculation
 calc_ffp <- function(x) {
@@ -27,23 +35,27 @@ calc_ffp <- function(x) {
   )
 }
 
-#----------------Generate Footprint Climatologies-------------------------------
 #CMW============================================================================
 
 cmwffpdat <- read.csv("./SeriousStuff/Data/combined_CMdata.csv")%>%
-  mutate(TIMESTAMP_END = ymd_hms(TIMESTAMP_END))%>%
+ mutate(TIMESTAMP_END = ymd_hms(TIMESTAMP_END))%>%
   mutate(    yyyy = year(TIMESTAMP_END),
              mm = month(TIMESTAMP_END),
              day = day(TIMESTAMP_END),
              HH = hour(TIMESTAMP_END),
              MM = minute(TIMESTAMP_END))%>%
   filter(WS_1_1_1 >= 0)%>%
-  filter(HH %in% 8:17)
+  filter(HH %in% 8:17)%>%
+  filter(mm %in% 5:7)
 
 avg_WS <- mean(cmwffpdat$WS_1_1_1, na.rm = T)
+#range(cmwtimemerge$WS_1_1_1, na.rm = T)
+
+#format df for ffp calc
 
 meas_h <- 14
-d <- (2/3) * meas_h
+can_h <- 7
+d <- (2/3) * can_h
 bound_h <- 1000
 
 cmwall_clim_data <- cmwffpdat %>%
@@ -53,7 +65,7 @@ cmwall_clim_data <- cmwffpdat %>%
     day =day,
     HH_UTC = HH,
     MM = MM,
-    zm = meas_h - d,
+    zm = meas_h,
     umean = avg_WS,
     h = bound_h,
     ol = (-((USTAR^3) * (TA_1_1_1 + 273)) / (0.4 * 9.8 * (H / (1.25 * 1004)))),
@@ -65,17 +77,30 @@ cmwall_clim_dat <- cmwall_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
   filter(if_all(everything(), ~ !is.na(.)))%>%
-  filter(HH_UTC %in% 8:17)
-  
+  filter(HH_UTC %in% 8:17)%>%
+  filter(mm %in% 5:9)
 cmwall_clim_dat <- cmwall_clim_dat%>%
   mutate(z0 = NaN)
 
-cmwffp_list <- calc_ffp(cmwall_clim_dat)
+#split into separate wind directions bins of 20 degrees
+cmwall_clim_dat$dir_bin <- cut(
+  cmwall_clim_dat$wind_dir,
+  breaks = deg_int,
+  include.lowest = TRUE,
+  right = FALSE,  # intervals [0,20)
+  labels = head(deg_int, -1)  #lower bounds as labels
+)
+cmwsplit_dat <- split(cmwall_clim_dat, cmwall_clim_dat$dir_bin)
 
-saveRDS(cmwffp_list, "./SeriousStuff/Data/Footprints/SiteClimatologies/CMW_daytimeannual_ffp.rds")
+#####Calc + save footprints
+
+#use new function on list; calc ffp and store in list
+cmwffp_list <- lapply(cmwsplit_dat, calc_ffp)
+
+#write list of calculations to data:
+saveRDS(cmwffp_list, file = "./SeriousStuff/Data/Footprints/CMW_MJJ24_ffp_list_corrected.rds")
 
 #SRG============================================================================
-
 SRGffpdat <- read.csv("./SeriousStuff/Data/Input2dFootprint_SRG2024.csv")
 
 SRGtowerdat <- read.csv("./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv", na.strings = "-9999")%>%
@@ -86,11 +111,14 @@ SRGtowerdat <- read.csv("./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-
              HH = hour(TIMESTAMP_END),
              MM = minute(TIMESTAMP_END))%>%
   filter(WS >= 0)%>%
-  filter(HH %in% 8:17)
+  filter(HH %in% 8:17)%>%
+  filter(mm %in% 5:7)
 
 srgtimemerge <- merge(SRGtowerdat, SRGffpdat, by = c("yyyy", "mm", "day", "HH", "MM"))
 avg_WS <- mean(srgtimemerge$WS, na.rm = T)
+#range(srgtimemerge$WS_1_1_1, na.rm = T)
 
+#format df for ffp calc
 d <- 0.335
 bound_h <- 1000
 
@@ -113,13 +141,29 @@ srgall_clim_dat <- srgall_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
   filter(if_all(everything(), ~ !is.na(.)))%>%
-  filter(HH_UTC %in% 8:17)
+  filter(HH_UTC %in% 8:17)%>%
+  filter(mm %in% 5:9)
 srgall_clim_dat <- srgall_clim_dat%>%
   mutate(z0 = NaN)
 
-srgffp_list <- calc_ffp(srgall_clim_dat)
+#split into separate wind directions bins of 20 degrees
+srgall_clim_dat$dir_bin <- cut(
+  srgall_clim_dat$wind_dir,
+  breaks = deg_int,
+  include.lowest = TRUE,
+  right = FALSE,  # intervals [0,20)
+  labels = head(deg_int, -1)  #lower bounds as labels
+)
+srgsplit_dat <- split(srgall_clim_dat, srgall_clim_dat$dir_bin)
 
-#saveRDS(srgffp_list, "./SeriousStuff/Data/Footprints/SiteClimatologies/SRG_daytimeannual_ffp.rds")
+#####Calc + save footprints
+
+#use new function on list; calc ffp and store in list
+srgffp_list <- lapply(srgsplit_dat, calc_ffp)
+
+#write list of calculations to data:
+saveRDS(srgffp_list, file = "./SeriousStuff/Data/Footprints/SRG_MJJ24_ffp_list.rds")
+
 
 #SRM============================================================================
 
@@ -133,12 +177,15 @@ srmtowerdat <- read.csv("./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-
              HH = hour(TIMESTAMP_END),
              MM = minute(TIMESTAMP_END))%>%
   filter(WS >= 0)%>%
-  filter(HH %in% 8:17)
+  filter(HH %in% 8:17)%>%
+  filter(mm %in% 5:7)
 
 srmtimemerge <- merge(srmtowerdat, srmffpdat, by = c("yyyy", "mm", "day", "HH", "MM"))
 avg_WS <- mean(srmtimemerge$WS, na.rm = T)
+#range(srmtimemerge$WS_1_1_1, na.rm = T)
 
-d <- 0.335
+#format df for ffp calc
+d <- 2.01
 bound_h <- 1000
 
 srmall_clim_data <- srmffpdat %>%
@@ -160,13 +207,29 @@ srmall_clim_dat <- srmall_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
   filter(if_all(everything(), ~ !is.na(.)))%>%
-  filter(HH_UTC %in% 8:17)
+  filter(HH_UTC %in% 8:17)%>%
+  filter(mm %in% 5:9)
 srmall_clim_dat <- srmall_clim_dat%>%
   mutate(z0 = NaN)
 
-srmffp_list <- calc_ffp(srmall_clim_dat)
+#split into separate wind directions bins of 20 degrees
+srmall_clim_dat$dir_bin <- cut(
+  srmall_clim_dat$wind_dir,
+  breaks = deg_int,
+  include.lowest = TRUE,
+  right = FALSE,  # intervals [0,20)
+  labels = head(deg_int, -1)  #lower bounds as labels
+)
+srmsplit_dat <- split(srmall_clim_dat, srmall_clim_dat$dir_bin)
 
-#saveRDS(srmffp_list, "./SeriousStuff/Data/Footprints/SiteClimatologies/SRM_daytimeannual_ffp.rds")
+#####Calc + save footprints
+
+#use new function on list; calc ffp and store in list
+srmffp_list <- lapply(srmsplit_dat, calc_ffp)
+
+#write list of calculations to data:
+saveRDS(srmffp_list, file = "./SeriousStuff/Data/Footprints/SRM_MJJ24_ffp_list.rds")
+
 
 #Wkg============================================================================
 
@@ -180,11 +243,14 @@ wkgtowerdat <- read.csv("./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-
              HH = hour(TIMESTAMP_END),
              MM = minute(TIMESTAMP_END))%>%
   filter(WS >= 0)%>%
-  filter(HH %in% 8:17)
+  filter(HH %in% 8:17)%>%
+  filter(mm %in% 5:7)
 
 wkgtimemerge <- merge(wkgtowerdat, wkgffpdat, by = c("yyyy", "mm", "day", "HH", "MM"))
 avg_WS <- mean(wkgtimemerge$WS, na.rm = T)
+#range(wkgtimemerge$WS, na.rm = T)
 
+#format df for ffp calc
 d <- 0.335
 bound_h <- 1000
 
@@ -207,12 +273,25 @@ wkgall_clim_dat <- wkgall_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
   filter(if_all(everything(), ~ !is.na(.)))%>%
-  filter(HH_UTC %in% 8:17)
+  filter(HH_UTC %in% 8:17)%>%
+  filter(mm %in% 5:9)
 wkgall_clim_dat <- wkgall_clim_dat%>%
-  mutate(z0 = NaN)%>%
-  filter(wind_dir %in% 0:360)
+  mutate(z0 = NaN)
 
-wkgffp_list <- calc_ffp(wkgall_clim_dat)
+#split into separate wind directions bins of 20 degrees
+wkgall_clim_dat$dir_bin <- cut(
+  wkgall_clim_dat$wind_dir,
+  breaks = deg_int,
+  include.lowest = TRUE,
+  right = FALSE,  # intervals [0,20)
+  labels = head(deg_int, -1)  #lower bounds as labels
+)
+wkgsplit_dat <- split(wkgall_clim_dat, wkgall_clim_dat$dir_bin)
 
-#saveRDS(wkgffp_list, "./SeriousStuff/Data/Footprints/SiteClimatologies/Wkg_daytimeannual_ffp.rds")
+#####Calc + save footprints
 
+#use new function on list; calc ffp and store in list
+wkgffp_list <- lapply(wkgsplit_dat, calc_ffp)
+
+#write list of calculations to data:
+saveRDS(wkgffp_list, file = "./SeriousStuff/Data/Footprints/Wkg_MJJ24_ffp_list.rds")
