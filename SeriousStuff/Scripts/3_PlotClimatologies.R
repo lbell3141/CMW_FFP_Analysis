@@ -20,10 +20,10 @@ site_coords <- list(
 )
 
 imagery_files <- list(
-  CMW = "./SeriousStuff/Data/NAIP_imagery/RawImagery/Premonsoon/NAIP_CMW_20170610.tif",
-  SRM = "./SeriousStuff/Data/NAIP_imagery/RawImagery/Premonsoon/NAIP_SRM_20170611.tif",
-  SRG = "./SeriousStuff/Data/NAIP_imagery/RawImagery/Premonsoon/NAIP_SRG_20170611.tif",
-  WKG = "./SeriousStuff/Data/NAIP_imagery/RawImagery/Premonsoon/NAIP_Wkg_20170610.tif"
+  CMW = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/NAIP_CMW_20231016.tif",
+  SRM = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/NAIP_SRM_20231018.tif",
+  SRG = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/NAIP_SRG_20231018.tif",
+  WKG = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/NAIP_Wkg_20231016.tif"
 )
 
 imagery <- lapply(imagery_files, rast)
@@ -32,7 +32,7 @@ imagery <- lapply(imagery_files, rast)
 # 2. Load footprint (ffp) objects
 #-------------------------------
 ffp_list <- list(
-  CMW = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/CMW_daytimeannual_2017ffp.rds"),
+  CMW = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/CMW_daytimeannual_ffp_alldat.rds"),
   SRM = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/SRM_daytimeannual_ffp.rds"),
   SRG = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/SRG_daytimeannual_ffp.rds"),
   WKG = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/Wkg_daytimeannual_ffp.rds")
@@ -110,11 +110,26 @@ plot_site_centered_axes_bold <- function(site, buffer = 50, tick_interval = 50) 
   e0 <- crds(center)[1, 1]
   n0 <- crds(center)[1, 2]
   
+  #adjust NAIP RGB limits (cut off 5% on either end)
+  rgb_limits <- lapply(1:3, function(i) {
+    q <- quantile(values(r_crop[[i]]), probs = c(0.05, 0.95), na.rm = TRUE)
+    as.numeric(q)
+  })
+  
   # Plot RGB image
   par(mar = c(4,4,2,1))
-  plotRGB(r_crop, r=1, g=2, b=3, stretch="hist", axes=FALSE, box=FALSE,
-          xlim=c(fp_ext[1], fp_ext[2]), ylim=c(fp_ext[3], fp_ext[4]),
-          asp=1, xaxs="i", yaxs="i")
+  plotRGB(
+    r_crop,
+    r = 1, g = 2, b = 3,
+    stretch = "lin",
+    colNA = "black",
+    axes = FALSE, box = FALSE,
+    xlim = c(fp_ext[1], fp_ext[2]),
+    ylim = c(fp_ext[3], fp_ext[4]),
+    asp = 1, xaxs = "i", yaxs = "i",
+    scale = max(unlist(rgb_limits))  # stabilizes brightness
+  )
+  
   
   # Relative distances
   x_min <- fp_ext[1]-e0; x_max <- fp_ext[2]-e0
@@ -133,15 +148,15 @@ plot_site_centered_axes_bold <- function(site, buffer = 50, tick_interval = 50) 
   
   # Horizontal ticks & labels
   segments(e0+x_ticks, n0-tick_len, e0+x_ticks, n0+tick_len, col="white", lwd=3)
-  text(e0+x_ticks, n0-3*tick_len, labels=x_ticks, col="white", cex=1.5, font=2, adj=c(0.5,1))
+  #text(e0+x_ticks, n0-3*tick_len, labels=x_ticks, col="white", cex=1.5, font=2, adj=c(0.5,1))
   
   # Vertical ticks & labels
   segments(e0-tick_len, n0+y_ticks, e0+tick_len, n0+y_ticks, col="white", lwd=3)
-  text(e0-3*tick_len, n0+y_ticks, labels=y_ticks, col="white", cex=1.5, font=2, adj=c(1,0.5))
+  #text(e0-3*tick_len, n0+y_ticks, labels=y_ticks, col="white", cex=1.5, font=2, adj=c(1,0.5))
   
   # Footprint polygons
-  plot(ffp_v$outer, col=adjustcolor("yellow",0.15), border=NA, add=TRUE)
-  plot(ffp_v$mid,   col=adjustcolor("orange",0.25), border=NA, add=TRUE)
+  plot(ffp_v$outer, col=adjustcolor("yellow",0.35), border=NA, add=TRUE)
+  plot(ffp_v$mid,   col=adjustcolor("orange",0.45), border=NA, add=TRUE)
   plot(ffp_v$inner, col=adjustcolor("red",0.35), border=NA, add=TRUE)
   lines(ffp_v$outer, col="yellow", lwd=2)
   
@@ -156,3 +171,21 @@ plot_site_centered_axes_bold("CMW")
 plot_site_centered_axes_bold("SRM")
 plot_site_centered_axes_bold("SRG")
 plot_site_centered_axes_bold("WKG")
+
+# 
+# #save plots:
+# 
+# sites <- c("CMW", "SRM", "SRG", "WKG")
+# 
+# walk(sites, ~{
+#   png(
+#     filename = paste0(.x, "_FFP_climatology.png"),
+#     width = 2000,
+#     height = 2000,
+#     res = 300,
+#     bg = "transparent"
+#   )
+#   plot_site_centered_axes_bold(.x)
+#   dev.off()
+# })
+# 
