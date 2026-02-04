@@ -78,25 +78,64 @@ all_plot_df <- bind_rows(site_plot_dfs)
 # site order
 all_plot_df$site <- factor(all_plot_df$site, levels = c("CMW","SRM","SRG","WKG"))
 
-#plotting function
+#add R2 from a lm
+r2_df <- all_plot_df %>%
+  group_by(site, group) %>%
+  summarise(
+    r2 = summary(lm(y ~ x))$r.squared,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    r2_label = paste0("R² = ", round(r2, 3))
+  )
+
 make_density_plot <- function(df, group_name, y_label) {
   df_sub <- df %>% filter(group == group_name)
+  r2_sub <- r2_df %>% filter(group == group_name)
   
-  # x axis labels
   x_label <- ifelse(group_name == "-NEE vs GPP", "Ranked -NEE", "Ranked NEE")
   
   ggplot(df_sub, aes(x = x, y = y)) +
     geom_density_2d_filled(aes(fill = after_stat(level)), alpha = 0.6) +
     geom_smooth(method = "lm", se = FALSE,
-                color = ifelse(group_name == "-NEE vs GPP", "blue", "red")) +
-    facet_wrap(~ site, nrow = 1) +
-    scale_fill_viridis_d(name = "Density") +
+                color = "red",
+                linetype = "dashed") +
+    geom_text(
+      data = r2_sub,
+      aes(label = r2_label),
+      x = -Inf, y = Inf,
+      hjust = -0.3, vjust = 2,
+      inherit.aes = FALSE,
+      size = 5,
+      color = "white"
+    ) +
+    scale_x_continuous(
+      limits = c(1, 18),
+      breaks = c(1, 18)
+    ) +
+    scale_y_continuous(
+      limits = c(1, 18),
+      breaks = c(1, 18)
+    ) +
+    scale_fill_viridis_d(
+      name = "Point density",
+      guide = guide_legend(
+        label.position = "right",
+        title.position = "top"
+      )
+    ) +
     labs(
+      title = NULL,
       x = x_label,
       y = y_label
-      ) +
+    ) +
+    facet_wrap(~ site, nrow = 1) +
     theme_minimal(base_size = 12) +
-    theme(panel.grid = element_blank())
+    theme(
+      axis.text = element_text(size = 12),
+      axis.ticks = element_line(),
+      panel.grid = element_blank()
+    )
 }
 
 #plot
@@ -105,3 +144,4 @@ row2 <- make_density_plot(all_plot_df, "NEE vs RECO", "Ranked RECO")
 
 combined <- row1 / row2 + plot_layout(guides = "collect") & theme(legend.position = "right")
 combined
+
