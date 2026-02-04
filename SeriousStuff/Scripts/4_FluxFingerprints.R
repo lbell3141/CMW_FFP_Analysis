@@ -454,49 +454,74 @@ combined
 #===============================================================================
 #Create frequency plots of high values==========================================
   `#supplement interannual patterns in rankings by showing the frequency of 
-    #high ranks (1-3) by direction for all sites
+    #high ranks (1-6) by direction for all sites
+
+end_rank <- 6
 
 cmw_freq <- cmwranked_df %>%
   group_by(direction) %>%
   summarise(
-    high_rank_count = sum(nee_rank < 4, na.rm = T),
+    high_rank_count = sum(nee_rank < end_rank, na.rm = T),
+    total_obs = n(),
     .groups = "drop"
-  )
+  )%>%
+  mutate(perc_highrank = (high_rank_count/total_obs)*100)
 
 srg_freq <- srgranked_df %>%
   group_by(direction) %>%
   summarise(
-    high_rank_count = sum(nee_rank < 4, na.rm = T),
+    high_rank_count = sum(nee_rank < end_rank, na.rm = T),
+    total_obs = n(),
     .groups = "drop"
-  )
+  )%>%
+  mutate(perc_highrank = (high_rank_count/total_obs)*100)
 
 srm_freq <- srmranked_df %>%
   group_by(direction) %>%
   summarise(
-    high_rank_count = sum(nee_rank < 4, na.rm = T),
+    high_rank_count = sum(nee_rank < end_rank, na.rm = T),
+    total_obs = n(),
     .groups = "drop"
-  )
+  )%>%
+  mutate(perc_highrank = (high_rank_count/total_obs)*100)
 
 wkg_freq <- wkgranked_df %>%
   group_by(direction) %>%
   summarise(
-    high_rank_count = sum(nee_rank < 4, na.rm = T),
+    high_rank_count = sum(nee_rank < end_rank, na.rm = T),
+    total_obs = n(),
     .groups = "drop"
-  )
+  )%>%
+  mutate(perc_highrank = (high_rank_count/total_obs)*100 )
+
 #----plots----------------------------
-base_freq_plot <- function(df, ylab = "") {
-  ggplot(df, aes(x = direction, y = high_rank_count, group = 1)) +
+ymax <- max(
+  cmw_freq$perc_highrank,
+  srm_freq$perc_highrank,
+  srg_freq$perc_highrank,
+  wkg_freq$perc_highrank,
+  na.rm = TRUE
+)
+
+# optional: round up to a nice number
+ymax <- ceiling(ymax / 5) * 5
+
+base_freq_plot <- function(df, ylab = "", ylim = c(0, ymax)) {
+  ggplot(df, aes(x = direction, y = perc_highrank, group = 1)) +
     geom_point() +
-    geom_smooth(method = "loess", se = FALSE, color = "lightblue", linewidth = 1) +
+    geom_smooth(method = "loess", se = F, color = "lightblue", linewidth = 1) +
     scale_x_discrete(
       breaks = function(x) {
         x[(as.numeric(as.character(x)) - 20) %% 40 == 0]
       }
     ) +
+    scale_y_continuous(limits = ylim) +
     labs(x = "", y = ylab) +
     theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
-          axis.text.y = element_text(angle = 45, hjust = 1, size = 12))
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+      axis.text.y = element_text(size = 14)
+    )
 }
 
 cmw_freq_plot <- base_freq_plot(cmw_freq, "Frequency of NEE Ranking 1–6")
