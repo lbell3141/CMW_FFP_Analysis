@@ -6,9 +6,10 @@ library(tidyr)
 library(lubridate)
 library(gt)
 library(stringr)
+library(purrr)
 
 
-geospat <- readRDS("./SeriousStuff/Data/RasterStack/DirGeosDf357.rds")
+geospat <- readRDS("./SeriousStuff/Data/RasterStack/DirGeosDf468_meanNAIP_corCMW_v.rds")
 
 # pull summer fluxes for sites--------------------------------------------------
 deg_int    <- seq(0, 360, by = 20)
@@ -17,7 +18,7 @@ sites <- list(
   CMW = "./SeriousStuff/Data/AMF_US-CMW_BASE_HH_2-5.csv",
   SRM = "./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-2024_4-7.csv",
   SRG = "./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv",
-  Wkg = "./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv"
+  WKG = "./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv"
 )
 
 process_site <- function(file, site_name, nee_col, gpp_col, reco_col, wind_col, skip = 0) {
@@ -59,7 +60,7 @@ site_plot_dfs <- list(
   CMW = process_site(sites$CMW, "CMW", "NEE_PI", "GPP_PI", "RECO_PI", "WD_1_1_1", skip = 2),
   SRM = process_site(sites$SRM, "SRM", "NEE_VUT_REF", "GPP_DT_VUT_REF", "RECO_DT_VUT_REF", "WD"),
   SRG = process_site(sites$SRG, "SRG", "NEE_VUT_REF", "GPP_DT_VUT_REF", "RECO_DT_VUT_REF", "WD"),
-  Wkg = process_site(sites$Wkg, "Wkg", "NEE_VUT_REF", "GPP_DT_VUT_REF", "RECO_DT_VUT_REF", "WD")
+  WKG = process_site(sites$WKG, "WKG", "NEE_VUT_REF", "GPP_DT_VUT_REF", "RECO_DT_VUT_REF", "WD")
 )
 
 all_plot_df <- bind_rows(site_plot_dfs)%>%
@@ -70,28 +71,52 @@ all_plot_df <- bind_rows(site_plot_dfs)%>%
 combined_df <- all_plot_df %>%
   merge(geospat, by = c("site", "direction"))
 
-combined_wide <- combined_df %>%
+#reformat janky raster stack layer naming
+combined_summary <- combined_df %>%
+  
+  mutate(
+    variable = str_to_lower(str_extract(layer, "^[^_]+")),
+    dir_num  = as.integer(str_extract(layer, "(?<=dir)\\d+"))
+  ) %>%
+  
+  group_by(site, direction, variable) %>%
+  arrange(dir_num, .by_group = TRUE) %>%
+  mutate(site_index = row_number()) %>%
+  ungroup() %>%
+  
+  mutate(
+    season = case_when(
+      variable %in% c("ndvi","lai") & site == "CMW" & site_index == 1 ~ "monsoon",
+      variable %in% c("ndvi","lai") & site == "CMW" & site_index == 2 ~ "postmonsoon",
+      variable %in% c("ndvi","lai") & site == "CMW" & site_index == 3 ~ "premonsoon",
+      variable %in% c("ndvi","lai") & site == "CMW" & site_index == 4 ~ "winter",
+      
+      variable %in% c("ndvi","lai") & site != "CMW" & site_index == 1 ~ "postmonsoon",
+      variable %in% c("ndvi","lai") & site != "CMW" & site_index == 2 ~ "premonsoon",
+      variable %in% c("ndvi","lai") & site != "CMW" & site_index == 3 ~ "winter",
+      
+      TRUE ~ NA_character_
+    ),
+    
+    layer_clean = case_when(
+      variable %in% c("ndvi","lai") ~ paste(variable, season, sep = "_"),
+      variable %in% c("chm","cancov","twi") ~ variable
+    )
+  ) %>%
+  
+  group_by(site, direction, nee, gpp, reco, layer_clean) %>%
+  summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
+  
   pivot_wider(
-    id_cols = c(site, direction, nee, gpp, reco),
-    names_from = layer,
+    names_from = layer_clean,
     values_from = value
   )
-combined_wide_agg <- combined_wide %>%
-  rowwise() %>%
-  mutate(
-    chm = mean(c_across(starts_with("chm_dir")), na.rm = TRUE),
-    twi = mean(c_across(starts_with("twi_dir")), na.rm = TRUE),
-    lai = mean(c_across(starts_with("lai_dir")), na.rm = TRUE),
-    cancov = mean(c_across(starts_with("cancov_dir")), na.rm = TRUE),
-    ndvi = mean(c_across(starts_with("ndvi_dir")), na.rm = TRUE)
-  ) %>%
-  ungroup()%>%
-  select(site, direction, nee, gpp, reco, cancov, chm, ndvi, lai, twi)
 
-#saveRDS(combined_wide_agg, "./SeriousStuff/Data/RasterStack/GeosFlux_df468.rds")  
+
+#saveRDS(combined_summary, "./SeriousStuff/Data/RasterStack/GeosFlux_df468_v.rds")  
   
 # pull geos vars
-geo_vars <- names(combined_wide_agg)[!names(combined_wide_agg) %in% c("site", "direction", "gpp", "nee", "reco")]
+geo_vars <- names(combined_summary)[!names(combined_summary) %in% c("site", "direction", "gpp", "nee", "reco")]
 
 #func to calc stats at a given site: pearson's r and regression values
 compute_site_stats <- function(df_site, flux = "gpp", geo_vars) {
@@ -140,12 +165,12 @@ compute_site_stats <- function(df_site, flux = "gpp", geo_vars) {
   })
 }
 
-stat_table <- combined_wide_agg %>%
+stat_table <- combined_summary %>%
   group_by(site) %>%
   group_modify(~ compute_site_stats(.x, flux = "gpp", geo_vars)) %>%
   ungroup()
 
-#write.csv(stat_table, "./SeriousStuff/Data/RasterStack/GeosFluxStats.csv")
+#write.csv(stat_table, "./SeriousStuff/Data/RasterStack/GeosFluxStats_v.csv")
 
 # 
 # stat_table %>%
@@ -231,3 +256,4 @@ gt_tbl <- stat_table_wide %>%
     table.font.size = 12,
     data_row.padding = px(8)
   )
+

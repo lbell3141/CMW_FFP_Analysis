@@ -1,29 +1,27 @@
 #create a raster stack for all sites with LAI, NDVI, canopy cover, height, TWI(, and soil?)
 #mask raster stack with directional ffps and create df with direction and premonsoon data
-
+ 
 library(terra)
 library(tidyverse)
 library(lubridate)
 library(purrr)
 
-sites <- c("CMW", "SRM", "SRG", "Wkg")
+sites <- c("CMW", "SRM", "SRG", "WKG")
 
 site_coords <- list(
   CMW = c(31.6637, -110.1777),
   SRG = c(31.7894, -110.8277),
   SRM = c(31.8214, -110.8661),
-  Wkg = c(31.7365, -109.9419)
+  WKG = c(31.7365, -109.9419)
 )
 
 dirs <- c(
   cancov_dir = "./SeriousStuff/Data/LiDAR/CanopyCover",
   chm_dir    = "./SeriousStuff/Data/LiDAR/CHM",
-  ndvi_dir   = "./SeriousStuff/Data/NAIP_imagery/NAIP-derived_NDVI/premonsoon/2017",
-  lai_dir    = "./SeriousStuff/Data/NAIP_imagery/NAIP-derived_LAI/premonsoon/2017",
+  ndvi_dir   = "./SeriousStuff/Data/NAIP_imagery/1000m/SeasonalMean_NDVI",
+  lai_dir    = "./SeriousStuff/Data/NAIP_imagery/1000m/SeasonalMean_LAI",
   twi_dir    = "./SeriousStuff/Data/USGS_3DEP_DEM/3DEP-derived_TWI"
 )
-
-sites <- c("CMW", "SRM", "SRG", "Wkg")
 
 # find rast files from all folders
 all_files <- unlist(
@@ -103,18 +101,18 @@ site_stacks <- lapply(
   stack_rasters
 )
 
-#saveRDS(site_stacks, "./SeriousStuff/Data/RasterStack/site_stacks.RDS")
-plot(site_stacks$CMW)
+#saveRDS(site_stacks, "./SeriousStuff/Data/RasterStack/site_stacks_sznNAIP.RDS")
+plot(site_stacks$WKG)
 #===============================================================================
 #apply directional ffps to data
 
 #site_stacks <- readRDS("./SeriousStuff/Data/RasterStack/site_stacks.RDS")
 
 ffp_list <- list(
-  CMW = readRDS("./SeriousStuff/Data/Footprints/DirectionalFFPs/CMW_MJJ24_ffp_list.rds"),
+  CMW = readRDS("./SeriousStuff/Data/Footprints/DirectionalFFPs/CMW_MJJ24_ffp_list_corrected.rds"),
   SRM = readRDS("./SeriousStuff/Data/Footprints/DirectionalFFPs/SRM_MJJ24_ffp_list.rds"),
   SRG = readRDS("./SeriousStuff/Data/Footprints/DirectionalFFPs/SRG_MJJ24_ffp_list.rds"),
-  Wkg = readRDS("./SeriousStuff/Data/Footprints/DirectionalFFPs/Wkg_MJJ24_ffp_list.rds")
+  WKG = readRDS("./SeriousStuff/Data/Footprints/DirectionalFFPs/WKG_MJJ24_ffp_list.rds")
 )
 
 #weighting rasts by contour function
@@ -204,5 +202,5 @@ results_list <- map(names(site_stacks), function(site) {
 # Combine into one df + save
 ffp_results_df <- bind_rows(results_list)%>%
   rename(value = veg_cover)
-#saveRDS(ffp_results_df, "./SeriousStuff/Data/RasterStack/DirGeosDf468.rds")
+#saveRDS(ffp_results_df, "./SeriousStuff/Data/RasterStack/DirGeosDf468_meanNAIP_corCMW.rds")
 
