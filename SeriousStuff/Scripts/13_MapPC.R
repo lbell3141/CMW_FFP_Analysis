@@ -13,14 +13,18 @@ library(patchwork)
 
 
 #load 2017 lai data-------------------------------------------------------------
-geospat <- readRDS("./SeriousStuff/Data/RasterStack/DirGeosDf357.rds")
+geospat <- readRDS("./SeriousStuff/Data/RasterStack/GeosFlux_df468_v.rds")
+
+# lai_df <- geospat %>%
+#   filter(grepl("lai", tolower(layer))) %>%
+#   select(site, direction, value) %>%
+#   rename(lai = value)
 
 lai_df <- geospat %>%
-  filter(grepl("lai", tolower(layer))) %>%
-  select(site, direction, value) %>%
-  rename(lai = value)
-
-
+    select(site, direction, lai_premonsoon)%>%
+  rename(lai = lai_premonsoon)%>%
+  mutate(site = ifelse(site == "wkg", "WKG", site))
+  
 #prep flux data ---------------------------------------------------------------- 
 deg_int    <- seq(0, 360, by = 20)
 deg_labels <- seq(20, 360, by = 20)
@@ -28,7 +32,7 @@ sites <- list(
   CMW = "./SeriousStuff/Data/AMF_US-CMW_BASE_HH_2-5.csv",
   SRM = "./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-2024_4-7.csv",
   SRG = "./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv",
-  Wkg = "./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv"
+  WKG = "./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv"
 )
 
 #func to pull relevant data and get avg directional vals
@@ -67,7 +71,7 @@ site_plot_dfs <- list(
   CMW = process_site(sites$CMW, "CMW", "GPP_PI", "WD_1_1_1", skip = 2),
   SRM = process_site(sites$SRM, "SRM", "GPP_DT_VUT_REF", "WD"),
   SRG = process_site(sites$SRG, "SRG", "GPP_DT_VUT_REF", "WD"),
-  Wkg = process_site(sites$Wkg, "Wkg", "GPP_DT_VUT_REF", "WD")
+  WKG = process_site(sites$WKG, "WKG", "GPP_DT_VUT_REF", "WD")
 )
 
 gpp_df <- bind_rows(
@@ -150,7 +154,7 @@ plots_list <- setNames(
 
 #arrange plots
 
-site_order <- c("CMW", "SRM", "SRG", "Wkg")
+site_order <- c("CMW", "SRM", "SRG", "WKG")
 
 site_rows <- lapply(site_order, function(s) {
   
