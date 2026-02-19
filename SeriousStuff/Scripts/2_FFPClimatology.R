@@ -30,7 +30,7 @@ calc_ffp <- function(x) {
 #----------------Generate Footprint Climatologies-------------------------------
 #CMW============================================================================
 
-cmwffpdat <- read.csv("./SeriousStuff/Data/combined_CMdata.csv")%>%
+cmwffpdat <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/combined_CMdata.csv")%>%
   mutate(TIMESTAMP_END = ymd_hms(TIMESTAMP_END))%>%
   mutate(    yyyy = year(TIMESTAMP_END),
              mm = month(TIMESTAMP_END),
@@ -38,7 +38,8 @@ cmwffpdat <- read.csv("./SeriousStuff/Data/combined_CMdata.csv")%>%
              HH = hour(TIMESTAMP_END),
              MM = minute(TIMESTAMP_END))%>%
   filter(WS_1_1_1 >= 0)%>%
-  filter(HH %in% 8:17)
+  filter(HH %in% 8:17)%>%
+  filter(yyyy == 2021)
 
 avg_WS <- mean(cmwffpdat$WS_1_1_1, na.rm = T)
 
@@ -73,7 +74,7 @@ cmwall_clim_dat <- cmwall_clim_dat%>%
 
 cmwffp_list <- calc_ffp(cmwall_clim_dat)
 
-saveRDS(cmwffp_list, "./SeriousStuff/Data/Footprints/SiteClimatologies/CMW_daytimeannual_ffptest.rds")
+#saveRDS(cmwffp_list, "./SeriousStuff/Data/Footprints/SiteClimatologies/CMW_daytimeannual_ffp2021.rds")
 
 #SRG============================================================================
 
