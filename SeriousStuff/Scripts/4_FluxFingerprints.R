@@ -16,7 +16,7 @@ deg_labels <- seq(20, 360, by = 20)
 #===============================================================================
 
 # Load data
-cmwdat_file <- read.csv("./SeriousStuff/Data/AMF_US-CMW_BASE_HH_2-5.csv", na.strings = "-9999", skip = 2) %>%
+cmwdat_file <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/CMW_FullFluxes.csv", na.strings = "-9999", skip = 2) %>%
   mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
 
 # prep frame
@@ -120,7 +120,7 @@ cmw <- ggplot(cmwranked_df, aes(
 #SRG===============================================================================
 
 # Load data
-srgdat_file <- read.csv("./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv", na.strings = "-9999", skip = 0) %>%
+srgdat_file <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRG_FullFluxes.csv", na.strings = "-9999", skip = 0) %>%
   mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
 
 # Create primary dataframe
@@ -132,8 +132,8 @@ srgdat_voi <- srgdat_file %>%
     day = day(TIMESTAMP_START),
     HH_UTC = hour(TIMESTAMP_START),
     MM = minute(TIMESTAMP_START),
-    nee = NEE_VUT_REF,
-    wind_dir = WD) %>%
+    nee = as.numeric(NEE),
+    wind_dir = WD_1_1_1) %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)%>%
   drop_na()
 
@@ -225,7 +225,7 @@ srg <- ggplot(srgranked_df, aes(
 #SRM===============================================================================
 
 # Load data
-srmdat_file <- read.csv("./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-2024_4-7.csv", na.strings = "-9999", skip = 0) %>%
+srmdat_file <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRM_FullFluxes.csv", na.strings = "-9999", skip = 0) %>%
   mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
 
 # Create primary dataframe
@@ -237,8 +237,8 @@ srmdat_voi <- srmdat_file %>%
     day = day(TIMESTAMP_START),
     HH_UTC = hour(TIMESTAMP_START),
     MM = minute(TIMESTAMP_START),
-    nee = NEE_VUT_REF,
-    wind_dir = WD) %>%
+    nee = as.numeric(NEE),
+    wind_dir = as.numeric(WD_1_1_1)) %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)%>%
   drop_na()
 
@@ -329,7 +329,7 @@ srm <- ggplot(srmranked_df, aes(
 #Wkg===============================================================================
 
 # Load data
-wkgdat_file <- read.csv("./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv", na.strings = "-9999", skip = 0) %>%
+wkgdat_file <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/WKG_FullFluxes.csv", na.strings = "-9999", skip = 0) %>%
   mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
 
 # Create primary dataframe
@@ -341,8 +341,8 @@ wkgdat_voi <- wkgdat_file %>%
     day = day(TIMESTAMP_START),
     HH_UTC = hour(TIMESTAMP_START),
     MM = minute(TIMESTAMP_START),
-    nee = NEE_VUT_REF,
-    wind_dir = WD) %>%
+    nee = as.numeric(NEE),
+    wind_dir = as.numeric(WD_1_1_1)) %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)%>%
   drop_na()
 
