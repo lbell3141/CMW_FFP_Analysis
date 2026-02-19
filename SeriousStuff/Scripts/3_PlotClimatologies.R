@@ -4,8 +4,6 @@
 
 library(terra)
 library(tidyverse)
-library(gridGraphics)
-library(gridExtra)
 
 #-------------------------------
 # 1. Site coordinates & imagery
@@ -20,10 +18,10 @@ site_coords <- list(
 )
 
 imagery_files <- list(
-  CMW = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/NAIP_CMW_20231016.tif",
-  SRM = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/NAIP_SRM_20231018.tif",
-  SRG = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/NAIP_SRG_20231018.tif",
-  WKG = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/NAIP_Wkg_20231016.tif"
+  CMW = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/postmonsoon/NAIP_CMW_20231016.tif",
+  SRM = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/postmonsoon/NAIP_SRM_20231018.tif",
+  SRG = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/postmonsoon/NAIP_SRG_20231018.tif",
+  WKG = "./SeriousStuff/Data/NAIP_imagery/1000m/RawImagery/postmonsoon/NAIP_Wkg_20231016.tif"
 )
 
 imagery <- lapply(imagery_files, rast)
@@ -32,7 +30,7 @@ imagery <- lapply(imagery_files, rast)
 # 2. Load footprint (ffp) objects
 #-------------------------------
 ffp_list <- list(
-  CMW = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/CMW_daytimeannual_ffp_alldat.rds"),
+  CMW = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/CMW_daytimeannual_ffp2021.rds"),
   SRM = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/SRM_daytimeannual_ffp.rds"),
   SRG = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/SRG_daytimeannual_ffp.rds"),
   WKG = readRDS("./SeriousStuff/Data/Footprints/SiteClimatologies/Wkg_daytimeannual_ffp.rds")
@@ -66,18 +64,6 @@ get_center_utm <- function(site) {
   project(p, crs(imagery[[site]]))
 }
 
-# Square crop around outer footprint
-get_square_crop <- function(ffp_v, buffer = 100) {
-  e <- ext(ffp_v$outer)
-  max_range <- max(e[2]-e[1], e[4]-e[3])
-  center_x <- (e[1] + e[2])/2
-  center_y <- (e[3] + e[4])/2
-  ext(center_x - max_range/2 - buffer,
-      center_x + max_range/2 + buffer,
-      center_y - max_range/2 - buffer,
-      center_y + max_range/2 + buffer)
-}
-
 #-------------------------------
 # 4. Create footprint polygons for each site
 #-------------------------------
@@ -88,80 +74,114 @@ site_ffp_vectors <- map(sites, function(site) {
   coords <- site_coords[[site]]
   ffp <- ffp_list[[site]]
   
-  vects <- map(contour_idx, ~ ffp_to_vect(ffp, .x, coords["lat"], coords["lon"], rast_crs) |> smooth_poly(width = 15))
+  vects <- map(
+    contour_idx,
+    ~ ffp_to_vect(ffp, .x, coords["lat"], coords["lon"], rast_crs) |>
+      smooth_poly(width = 15)
+  )
+  
   names(vects) <- c("inner", "mid", "outer")
   vects
 })
+
 names(site_ffp_vectors) <- sites
 
 #-------------------------------
 # 5. Plot function: centered crosshair axes with bold ticks
 #-------------------------------
-plot_site_centered_axes_bold <- function(site, buffer = 50, tick_interval = 50) {
+
+plot_site_centered_axes_bold <- function(site,
+                                         half_width = 350,
+                                         tick_interval = 50) {
+  
   r <- imagery[[site]]
   ffp_v <- site_ffp_vectors[[site]]
   
-  # Crop to square around outer footprint
-  fp_ext <- get_square_crop(ffp_v, buffer)
-  r_crop <- crop(r, fp_ext)
-  
-  # Tower center in UTM
+  # Tower center
   center <- get_center_utm(site)
   e0 <- crds(center)[1, 1]
   n0 <- crds(center)[1, 2]
   
-  #adjust NAIP RGB limits (cut off 5% on either end)
+  # Fixed 350 m extent
+  fp_ext <- ext(
+    e0 - half_width,
+    e0 + half_width,
+    n0 - half_width,
+    n0 + half_width
+  )
+  
+  r_crop <- crop(r, fp_ext)
+  
+  # RGB contrast stretch (5–95%)
   rgb_limits <- lapply(1:3, function(i) {
-    q <- quantile(values(r_crop[[i]]), probs = c(0.05, 0.95), na.rm = TRUE)
+    q <- quantile(values(r_crop[[i]]),
+                  probs = c(0.05, 0.95),
+                  na.rm = TRUE)
     as.numeric(q)
   })
   
-  # Plot RGB image
   par(mar = c(4,4,2,1))
+  
   plotRGB(
     r_crop,
     r = 1, g = 2, b = 3,
     stretch = "lin",
     colNA = "black",
-    axes = FALSE, box = FALSE,
-    xlim = c(fp_ext[1], fp_ext[2]),
-    ylim = c(fp_ext[3], fp_ext[4]),
-    asp = 1, xaxs = "i", yaxs = "i",
-    scale = max(unlist(rgb_limits))  # stabilizes brightness
+    axes = FALSE,
+    box = FALSE,
+    asp = 1,
+    xaxs = "i",
+    yaxs = "i",
+    scale = max(unlist(rgb_limits))
   )
   
+  # Relative ranges
+  x_ticks <- seq(-half_width, half_width, by = tick_interval)
+  y_ticks <- seq(-half_width, half_width, by = tick_interval)
   
-  # Relative distances
-  x_min <- fp_ext[1]-e0; x_max <- fp_ext[2]-e0
-  y_min <- fp_ext[3]-n0; y_max <- fp_ext[4]-n0
+  tick_len <- (2 * half_width) * 0.03  # slightly longer ticks
   
-  x_ticks <- seq(floor(x_min/tick_interval)*tick_interval,
-                 ceiling(x_max/tick_interval)*tick_interval, by = tick_interval)
-  y_ticks <- seq(floor(y_min/tick_interval)*tick_interval,
-                 ceiling(y_max/tick_interval)*tick_interval, by = tick_interval)
+  # ---------------------------
+  # Bold crosshair axes
+  # ---------------------------
+  segments(e0 - half_width, n0,
+           e0 + half_width, n0,
+           col = "white", lwd = 4)
   
-  tick_len <- (fp_ext[2]-fp_ext[1])*0.02  # tick size
+  segments(e0, n0 - half_width,
+           e0, n0 + half_width,
+           col = "white", lwd = 4)
   
-  # Draw crosshair axes
-  segments(e0+x_min, n0, e0+x_max, n0, col="white", lwd=3)
-  segments(e0, n0+y_min, e0, n0+y_max, col="white", lwd=3)
+  # ---------------------------
+  # Extra-bold tick marks
+  # ---------------------------
+  segments(e0 + x_ticks, n0 - tick_len,
+           e0 + x_ticks, n0 + tick_len,
+           col = "white", lwd = 5)
   
-  # Horizontal ticks & labels
-  segments(e0+x_ticks, n0-tick_len, e0+x_ticks, n0+tick_len, col="white", lwd=3)
-  #text(e0+x_ticks, n0-3*tick_len, labels=x_ticks, col="white", cex=1.5, font=2, adj=c(0.5,1))
+  segments(e0 - tick_len, n0 + y_ticks,
+           e0 + tick_len, n0 + y_ticks,
+           col = "white", lwd = 5)
   
-  # Vertical ticks & labels
-  segments(e0-tick_len, n0+y_ticks, e0+tick_len, n0+y_ticks, col="white", lwd=3)
-  #text(e0-3*tick_len, n0+y_ticks, labels=y_ticks, col="white", cex=1.5, font=2, adj=c(1,0.5))
+  # ---------------------------
+  # Footprints
+  # ---------------------------
+  plot(ffp_v$outer,
+       col = adjustcolor("yellow", 0.35),
+       border = NA,
+       add = TRUE)
   
-  # Footprint polygons
-  plot(ffp_v$outer, col=adjustcolor("yellow",0.35), border=NA, add=TRUE)
-  plot(ffp_v$mid,   col=adjustcolor("orange",0.45), border=NA, add=TRUE)
-  plot(ffp_v$inner, col=adjustcolor("red",0.35), border=NA, add=TRUE)
-  lines(ffp_v$outer, col="yellow", lwd=2)
+  plot(ffp_v$mid,
+       col = adjustcolor("orange", 0.45),
+       border = NA,
+       add = TRUE)
   
-  # Site title
-  #title(site, line=0.5, col.main="white", font.main=2)
+  plot(ffp_v$inner,
+       col = adjustcolor("red", 0.35),
+       border = NA,
+       add = TRUE)
+  
+  lines(ffp_v$outer, col = "yellow", lwd = 3)
 }
 
 #-------------------------------
@@ -172,20 +192,16 @@ plot_site_centered_axes_bold("SRM")
 plot_site_centered_axes_bold("SRG")
 plot_site_centered_axes_bold("WKG")
 
-# 
-# #save plots:
-# 
-# sites <- c("CMW", "SRM", "SRG", "WKG")
-# 
+
 # walk(sites, ~{
 #   png(
-#     filename = paste0(.x, "_FFP_climatology.png"),
+#     filename = paste0(.x, "_FFP_climatology_350m.png"),
 #     width = 2000,
 #     height = 2000,
 #     res = 300,
-#     bg = "transparent"
+#     bg = "black"
 #   )
 #   plot_site_centered_axes_bold(.x)
 #   dev.off()
 # })
-# 
+
