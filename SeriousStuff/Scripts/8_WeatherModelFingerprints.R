@@ -8,10 +8,10 @@ library(patchwork)
 
 # load RF data (from WeatherModelOutputs.R)
 site_files <- list(
-  CMW = "./SeriousStuff/Data/RandomForestOutputs/cmwmm_rf_summary_results.RDS",
-  SRG = "./SeriousStuff/Data/RandomForestOutputs/srgmm_rf_summary_results.RDS",
-  SRM = "./SeriousStuff/Data/RandomForestOutputs/srmmm_rf_summary_results.RDS",
-  WKG = "./SeriousStuff/Data/RandomForestOutputs/wkgmm_rf_summary_results.RDS"
+  CMW = "./SeriousStuff/Data/RandomForestOutputs/cmwmm_rf_summary_resultsPI.RDS",
+  SRG = "./SeriousStuff/Data/RandomForestOutputs/srgmm_rf_summary_resultsPI.RDS",
+  SRM = "./SeriousStuff/Data/RandomForestOutputs/srmmm_rf_summary_resultsPI.RDS",
+  WKG = "./SeriousStuff/Data/RandomForestOutputs/wkgmm_rf_summary_resultsPI.RDS"
 )
 
 site_summaries <- imap(site_files, ~{
