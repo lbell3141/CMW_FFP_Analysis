@@ -6,14 +6,15 @@ library(dplyr)
 library(ggplot2)
 library(purrr)
 library(randomForest)
+library(scales)
 library(viridis)
 
 ## Load model results
 
-cmw_res <- readRDS("./SeriousStuff/Data/RandomForestOutputs/cmwmm_rf_results.RDS")
-srg_res <- readRDS("./SeriousStuff/Data/RandomForestOutputs/srgmm_rf_results.RDS")
-srm_res <- readRDS("./SeriousStuff/Data/RandomForestOutputs/srmmm_rf_results.RDS")
-wkg_res <- readRDS("./SeriousStuff/Data/RandomForestOutputs/wkgmm_rf_results.RDS")
+cmw_res <- readRDS("./SeriousStuff/Data/RandomForestOutputs/cmwmm_rf_resultsPI.RDS")
+srg_res <- readRDS("./SeriousStuff/Data/RandomForestOutputs/srgmm_rf_resultsPI.RDS")
+srm_res <- readRDS("./SeriousStuff/Data/RandomForestOutputs/srmmm_rf_resultsPI.RDS")
+wkg_res <- readRDS("./SeriousStuff/Data/RandomForestOutputs/wkgmm_rf_resultsPI.RDS")
 
 ## Collapse list into df
 site_list <- list(
@@ -51,7 +52,7 @@ plot_obs_vs_modeled <- function(site_res, site_name) {
 
 # Loop through sites to make plots; store as a list
 site_plots <- map2(site_list, names(site_list), plot_obs_vs_modeled)
-site_plots$CMW
+#site_plots$CMW
 
 #plot all sites at once: 
 pred_df <- imap_dfr(site_list, function(site_res, site_name) {
