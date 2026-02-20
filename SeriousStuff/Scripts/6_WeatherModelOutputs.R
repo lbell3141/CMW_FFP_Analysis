@@ -51,7 +51,7 @@ deg_labels <- seq(20, 360, by = 20)
 #===============================================================================
 
 cmwdat_file <- read.csv(
-  "./SeriousStuff/Data/AMF_US-CMW_BASE_HH_2-5.csv",
+  "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/CMW_FullFluxes.csv",
   na.strings = "-9999",
   skip = 2
 ) %>%
@@ -113,16 +113,16 @@ cmwmm_mod_list <- lapply(
   \(x) summarize_by_dir(x$predictions)
 )
 
-saveRDS(cmwmm_rf_results, "./SeriousStuff/Data/cmwmm_rf_results.RDS")
-saveRDS(cmwmm_mod_list, "./SeriousStuff/Data/cmwmm_rf_summary_results.RDS")
+#saveRDS(cmwmm_rf_results, "./SeriousStuff/Data/RandomForestOutputs/cmwmm_rf_resultsPI.RDS")
+#saveRDS(cmwmm_mod_list, "./SeriousStuff/Data/RandomForestOutputs/cmwmm_rf_summary_resultsPI.RDS")
 
 #===============================================================================
 #SRG============================================================================
 #===============================================================================
 
 srgdat_file <- read.csv(
-  "./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv",
-  na.strings = "-9999",
+  "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRG_FullFluxes.csv",
+  na.strings = c("-9999", "NA"),
   skip = 0
 ) %>%
   mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
@@ -135,17 +135,17 @@ srgdat_voi <- srgdat_file %>%
     day  = day(TIMESTAMP_START),
     HH_UTC = hour(TIMESTAMP_START),
     MM   = minute(TIMESTAMP_START),
-    wind_sp = WS,
-    temp_atmos = TA_F,
+    wind_sp = WS_1_1_1,
+    temp_atmos = TA_1_1_1,
     u_star = USTAR,
-    wind_dir = WD,
-    gpp = GPP_DT_VUT_REF,
+    wind_dir = WD_1_1_1,
+    gpp = GPP,
     precip = P,
-    rel_h = RH,
-    VPD = RHtoVPD(RH, TA_F, PA),
-    ppfd = PPFD_IN,
-    le = LE_F_MDS,
-    swc = SWC_F_MDS_1
+    rel_h = RH_1_1_1,
+    VPD = RHtoVPD(RH_1_1_1, TA_1_1_1, PA),
+    ppfd = PPFD_IN_F,
+    le = LE,
+    swc = SWC_1_1_1
   ) %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)
 
@@ -183,16 +183,16 @@ srgmm_mod_list <- lapply(
   \(x) summarize_by_dir(x$predictions)
 )
 
-saveRDS(srgmm_rf_results, "./SeriousStuff/Data/srgmm_rf_results.RDS")
-saveRDS(srgmm_mod_list, "./SeriousStuff/Data/srgmm_rf_summary_results.RDS")
+#saveRDS(srgmm_rf_results, "./SeriousStuff/Data/RandomForestOutputs/srgmm_rf_resultsPI.RDS")
+#saveRDS(srgmm_mod_list, "./SeriousStuff/Data/RandomForestOutputs/srgmm_rf_summary_resultsPI.RDS")
 
 #===============================================================================
 #SRM============================================================================
 #===============================================================================
 
 srmdat_file <- read.csv(
-  "./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-2024_4-7.csv",
-  na.strings = "-9999",
+  "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRM_FullFluxes.csv",
+  na.strings = c("-9999", "NA"),
   skip = 0
 ) %>%
   mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
@@ -205,17 +205,17 @@ srmdat_voi <- srmdat_file %>%
     day  = day(TIMESTAMP_START),
     HH_UTC = hour(TIMESTAMP_START),
     MM   = minute(TIMESTAMP_START),
-    wind_sp = WS,
-    temp_atmos = TA_F,
+    wind_sp = WS_1_1_1,
+    temp_atmos = TA_1_1_1,
     u_star = USTAR,
-    wind_dir = WD,
-    gpp = GPP_DT_VUT_REF,
+    wind_dir = WD_1_1_1,
+    gpp = GPP,
     precip = P,
-    rel_h = RH,
-    VPD = RHtoVPD(RH, TA_F, PA),
-    ppfd = PPFD_IN,
-    le = LE_F_MDS,
-    swc = SWC_F_MDS_1
+    rel_h = RH_1_1_1,
+    VPD = RHtoVPD(RH_1_1_1, TA_1_1_1, PA),
+    ppfd = PPFD_IN_F,
+    le = LE,
+    swc = SWC_1_1_A
   ) %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)
 
@@ -253,8 +253,8 @@ srmmm_mod_list <- lapply(
   \(x) summarize_by_dir(x$predictions)
 )
 
-saveRDS(srmmm_rf_results, "./SeriousStuff/Data/srmmm_rf_results.RDS")
-saveRDS(srmmm_mod_list, "./SeriousStuff/Data/srmmm_rf_summary_results.RDS")
+saveRDS(srmmm_rf_results, "./SeriousStuff/Data/RandomForestOutputs/srmmm_rf_resultsPI.RDS")
+saveRDS(srmmm_mod_list, "./SeriousStuff/Data/RandomForestOutputs/srmmm_rf_summary_resultsPI.RDS")
 
 #===============================================================================
 #Wkg============================================================================
@@ -262,8 +262,8 @@ saveRDS(srmmm_mod_list, "./SeriousStuff/Data/srmmm_rf_summary_results.RDS")
 
 
 wkgdat_file <- read.csv(
-  "./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv",
-  na.strings = "-9999",
+  "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/WKG_FullFluxes.csv",
+  na.strings = c("-9999", "NA"),
   skip = 0
 ) %>%
   mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
@@ -276,17 +276,17 @@ wkgdat_voi <- wkgdat_file %>%
     day  = day(TIMESTAMP_START),
     HH_UTC = hour(TIMESTAMP_START),
     MM   = minute(TIMESTAMP_START),
-    wind_sp = WS,
-    temp_atmos = TA_F,
+    wind_sp = WS_1_1_1,
+    temp_atmos = TA_1_1_1,
     u_star = USTAR,
-    wind_dir = WD,
-    gpp = GPP_DT_VUT_REF,
+    wind_dir = WD_1_1_1,
+    gpp = GPP,
     precip = P,
-    rel_h = RH,
-    VPD = RHtoVPD(RH, TA_F, PA),
-    ppfd = PPFD_IN,
-    le = LE_F_MDS,
-    swc = SWC_F_MDS_1
+    rel_h = RH_1_1_1,
+    VPD = RHtoVPD(RH_1_1_1, TA_1_1_1, PA),
+    ppfd = PPFD_IN_F,
+    le = LE,
+    swc = SWC_1_1_1
   ) %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)
 
@@ -324,5 +324,5 @@ wkgmm_mod_list <- lapply(
   \(x) summarize_by_dir(x$predictions)
 )
 
-saveRDS(wkgmm_rf_results, "./SeriousStuff/Data/wkgmm_rf_results.RDS")
-saveRDS(wkgmm_mod_list, "./SeriousStuff/Data/wkgmm_rf_summary_results.RDS")
+saveRDS(wkgmm_rf_results, "./SeriousStuff/Data/RandomForestOutputs/wkgmm_rf_resultsPI.RDS")
+saveRDS(wkgmm_mod_list, "./SeriousStuff/Data/RandomForestOutputs/wkgmm_rf_summary_resultsPI.RDS")
