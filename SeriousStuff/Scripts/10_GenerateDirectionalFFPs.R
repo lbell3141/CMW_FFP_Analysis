@@ -37,7 +37,7 @@ calc_ffp <- function(x) {
 
 #CMW============================================================================
 
-cmwffpdat <- read.csv("./SeriousStuff/Data/combined_CMdata.csv")%>%
+cmwffpdat <- read.csv("./SeriousStuff/Data/FluxData/combined_CMdata.csv")%>%
  mutate(TIMESTAMP_END = ymd_hms(TIMESTAMP_END))%>%
   mutate(    yyyy = year(TIMESTAMP_END),
              mm = month(TIMESTAMP_END),
@@ -46,7 +46,7 @@ cmwffpdat <- read.csv("./SeriousStuff/Data/combined_CMdata.csv")%>%
              MM = minute(TIMESTAMP_END))%>%
   filter(WS_1_1_1 >= 0)%>%
   filter(HH %in% 8:17)%>%
-  filter(mm %in% 5:7)
+  filter(yyyy == 2021)
 
 avg_WS <- mean(cmwffpdat$WS_1_1_1, na.rm = T)
 #range(cmwtimemerge$WS_1_1_1, na.rm = T)
@@ -77,8 +77,7 @@ cmwall_clim_dat <- cmwall_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
   filter(if_all(everything(), ~ !is.na(.)))%>%
-  filter(HH_UTC %in% 8:17)%>%
-  filter(mm %in% 5:9)
+  filter(HH_UTC %in% 8:17)
 cmwall_clim_dat <- cmwall_clim_dat%>%
   mutate(z0 = NaN)
 
@@ -98,24 +97,23 @@ cmwsplit_dat <- split(cmwall_clim_dat, cmwall_clim_dat$dir_bin)
 cmwffp_list <- lapply(cmwsplit_dat, calc_ffp)
 
 #write list of calculations to data:
-saveRDS(cmwffp_list, file = "./SeriousStuff/Data/Footprints/CMW_MJJ24_ffp_list_corrected.rds")
+saveRDS(cmwffp_list, file = "./SeriousStuff/Data/Footprints/DirectionalFFPs/CMW_2021_ffp_list.rds")
 
 #SRG============================================================================
-SRGffpdat <- read.csv("./SeriousStuff/Data/Input2dFootprint_SRG2024.csv")
+SRGffpdat <- read.csv("./SeriousStuff/Data/FluxData/Input2dFootprint_SRG2024.csv")
 
-SRGtowerdat <- read.csv("./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv", na.strings = "-9999")%>%
+SRGtowerdat <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRG_FullFluxes.csv", na.strings = "-9999")%>%
   mutate(TIMESTAMP_END = ymd_hm(TIMESTAMP_END))%>%
   mutate(    yyyy = year(TIMESTAMP_END),
              mm = month(TIMESTAMP_END),
              day = day(TIMESTAMP_END),
              HH = hour(TIMESTAMP_END),
              MM = minute(TIMESTAMP_END))%>%
-  filter(WS >= 0)%>%
-  filter(HH %in% 8:17)%>%
-  filter(mm %in% 5:7)
+  filter(WS_1_1_1 >= 0)%>%
+  filter(HH %in% 8:17)
 
 srgtimemerge <- merge(SRGtowerdat, SRGffpdat, by = c("yyyy", "mm", "day", "HH", "MM"))
-avg_WS <- mean(srgtimemerge$WS, na.rm = T)
+avg_WS <- mean(srgtimemerge$WS_1_1_1, na.rm = T)
 #range(srgtimemerge$WS_1_1_1, na.rm = T)
 
 #format df for ffp calc
@@ -141,8 +139,7 @@ srgall_clim_dat <- srgall_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
   filter(if_all(everything(), ~ !is.na(.)))%>%
-  filter(HH_UTC %in% 8:17)%>%
-  filter(mm %in% 5:9)
+  filter(HH_UTC %in% 8:17)
 srgall_clim_dat <- srgall_clim_dat%>%
   mutate(z0 = NaN)
 
@@ -162,26 +159,25 @@ srgsplit_dat <- split(srgall_clim_dat, srgall_clim_dat$dir_bin)
 srgffp_list <- lapply(srgsplit_dat, calc_ffp)
 
 #write list of calculations to data:
-saveRDS(srgffp_list, file = "./SeriousStuff/Data/Footprints/SRG_MJJ24_ffp_list.rds")
+saveRDS(srgffp_list, file = "./SeriousStuff/Data/Footprints/SRG_ffp_list.rds")
 
 
 #SRM============================================================================
 
-srmffpdat <- read.csv("./SeriousStuff/Data/Input2dFootprint_SRM2024.csv")
+srmffpdat <- read.csv("./SeriousStuff/Data/FluxData/Input2dFootprint_SRM2024.csv")
 
-srmtowerdat <- read.csv("./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-2024_4-7.csv", na.strings = "-9999")%>%
+srmtowerdat <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRM_FullFluxes.csv", na.strings = c("NA", "-9999"))%>%
   mutate(TIMESTAMP_END = ymd_hm(TIMESTAMP_END))%>%
   mutate(    yyyy = year(TIMESTAMP_END),
              mm = month(TIMESTAMP_END),
              day = day(TIMESTAMP_END),
              HH = hour(TIMESTAMP_END),
              MM = minute(TIMESTAMP_END))%>%
-  filter(WS >= 0)%>%
-  filter(HH %in% 8:17)%>%
-  filter(mm %in% 5:7)
+  filter(WS_1_1_1 >= 0)%>%
+  filter(HH %in% 8:17)
 
 srmtimemerge <- merge(srmtowerdat, srmffpdat, by = c("yyyy", "mm", "day", "HH", "MM"))
-avg_WS <- mean(srmtimemerge$WS, na.rm = T)
+avg_WS <- mean(srmtimemerge$WS_1_1_1, na.rm = T)
 #range(srmtimemerge$WS_1_1_1, na.rm = T)
 
 #format df for ffp calc
@@ -207,8 +203,7 @@ srmall_clim_dat <- srmall_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
   filter(if_all(everything(), ~ !is.na(.)))%>%
-  filter(HH_UTC %in% 8:17)%>%
-  filter(mm %in% 5:9)
+  filter(HH_UTC %in% 8:17)
 srmall_clim_dat <- srmall_clim_dat%>%
   mutate(z0 = NaN)
 
@@ -228,26 +223,25 @@ srmsplit_dat <- split(srmall_clim_dat, srmall_clim_dat$dir_bin)
 srmffp_list <- lapply(srmsplit_dat, calc_ffp)
 
 #write list of calculations to data:
-saveRDS(srmffp_list, file = "./SeriousStuff/Data/Footprints/SRM_MJJ24_ffp_list.rds")
+saveRDS(srmffp_list, file = "./SeriousStuff/Data/Footprints/DirectionalFFPs/SRM_ffp_list.rds")
 
 
 #Wkg============================================================================
 
-wkgffpdat <- read.csv("./SeriousStuff/Data/Input2dFootprint_Wkg2024.csv", skip = 0)
+wkgffpdat <- read.csv("./SeriousStuff/Data/FluxData/Input2dFootprint_Wkg2024.csv", skip = 0)
 
-wkgtowerdat <- read.csv("./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv", na.strings = "-9999")%>%
+wkgtowerdat <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/WKG_FullFluxes.csv", na.strings = c("NA","-9999"))%>%
   mutate(TIMESTAMP_END = ymd_hm(TIMESTAMP_END))%>%
   mutate(    yyyy = year(TIMESTAMP_END),
              mm = month(TIMESTAMP_END),
              day = day(TIMESTAMP_END),
              HH = hour(TIMESTAMP_END),
              MM = minute(TIMESTAMP_END))%>%
-  filter(WS >= 0)%>%
-  filter(HH %in% 8:17)%>%
-  filter(mm %in% 5:7)
+  filter(WS_1_1_1 >= 0)%>%
+  filter(HH %in% 8:17)
 
 wkgtimemerge <- merge(wkgtowerdat, wkgffpdat, by = c("yyyy", "mm", "day", "HH", "MM"))
-avg_WS <- mean(wkgtimemerge$WS, na.rm = T)
+avg_WS <- mean(wkgtimemerge$WS_1_1_1, na.rm = T)
 #range(wkgtimemerge$WS, na.rm = T)
 
 #format df for ffp calc
@@ -273,8 +267,7 @@ wkgall_clim_dat <- wkgall_clim_data%>%
   filter(test >= -15.5)%>%
   filter(ustar > 0.2)%>%
   filter(if_all(everything(), ~ !is.na(.)))%>%
-  filter(HH_UTC %in% 8:17)%>%
-  filter(mm %in% 5:9)
+  filter(HH_UTC %in% 8:17)
 wkgall_clim_dat <- wkgall_clim_dat%>%
   mutate(z0 = NaN)
 
@@ -294,4 +287,4 @@ wkgsplit_dat <- split(wkgall_clim_dat, wkgall_clim_dat$dir_bin)
 wkgffp_list <- lapply(wkgsplit_dat, calc_ffp)
 
 #write list of calculations to data:
-saveRDS(wkgffp_list, file = "./SeriousStuff/Data/Footprints/Wkg_MJJ24_ffp_list.rds")
+saveRDS(wkgffp_list, file = "./SeriousStuff/Data/Footprints/DirectionalFFPs/Wkg_ffp_list.rds")
