@@ -190,11 +190,7 @@ srgmm_mod_list <- lapply(
 #SRM============================================================================
 #===============================================================================
 
-srmdat_file <- read.csv(
-  "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRM_FullFluxes.csv",
-  na.strings = c("-9999", "NA"),
-  skip = 0
-) %>%
+srmdat_file <- read.csv("./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRM_FullFluxes.csv", na.strings = c("NA","-9999"), skip = 0) %>%
   mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START)))
 
 srmdat_voi <- srmdat_file %>%
@@ -215,7 +211,7 @@ srmdat_voi <- srmdat_file %>%
     VPD = RHtoVPD(RH_1_1_1, TA_1_1_1, PA),
     ppfd = PPFD_IN_F,
     le = LE,
-    swc = SWC_1_1_A
+    swc = SWC_1_2_A
   ) %>%
   filter(HH_UTC >= 8 & HH_UTC <= 17)
 
