@@ -13,31 +13,27 @@ library(patchwork)
 
 
 #load 2017 lai data-------------------------------------------------------------
-geospat <- readRDS("./SeriousStuff/Data/RasterStack/GeosFlux_df468_v.rds")
-
-# lai_df <- geospat %>%
-#   filter(grepl("lai", tolower(layer))) %>%
-#   select(site, direction, value) %>%
-#   rename(lai = value)
+geospat <- read.csv("./SeriousStuff/Data/RasterStack/MaskedSpatialData.csv")
 
 lai_df <- geospat %>%
-    select(site, direction, lai_premonsoon)%>%
-  rename(lai = lai_premonsoon)%>%
-  mutate(site = ifelse(site == "wkg", "WKG", site))
+  filter(yyyy == 2017,
+         variable == "lai")%>%
+  rename(lai = weighted_mean)%>%
+    select(site, direction, lai)
   
 #prep flux data ---------------------------------------------------------------- 
 deg_int    <- seq(0, 360, by = 20)
 deg_labels <- seq(20, 360, by = 20)
 sites <- list(
-  CMW = "./SeriousStuff/Data/AMF_US-CMW_BASE_HH_2-5.csv",
-  SRM = "./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-2024_4-7.csv",
-  SRG = "./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv",
-  WKG = "./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv"
+  CMW = "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/CMW_FullFluxes.csv",
+  SRM = "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRM_FullFluxes.csv",
+  SRG = "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/SRG_FullFluxes.csv",
+  WKG = "./SeriousStuff/Data/FluxData/PI_DATA/Full_PI_Data_by_Site/WKG_FullFluxes.csv"
 )
 
 #func to pull relevant data and get avg directional vals
 process_site <- function(file, site_name, gpp_col, wind_col, skip = 0) {
-  df <- read.csv(file, na.strings = "-9999", skip = skip) %>%
+  df <- read.csv(file, na.strings = c("-9999", "NA"), skip = skip) %>%
     mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START))) %>%
     transmute(
       yyyy     = year(TIMESTAMP_START),
@@ -69,9 +65,9 @@ process_site <- function(file, site_name, gpp_col, wind_col, skip = 0) {
 #pull site data with helper function
 site_plot_dfs <- list(
   CMW = process_site(sites$CMW, "CMW", "GPP_PI", "WD_1_1_1", skip = 2),
-  SRM = process_site(sites$SRM, "SRM", "GPP_DT_VUT_REF", "WD"),
-  SRG = process_site(sites$SRG, "SRG", "GPP_DT_VUT_REF", "WD"),
-  WKG = process_site(sites$WKG, "WKG", "GPP_DT_VUT_REF", "WD")
+  SRM = process_site(sites$SRM, "SRM", "GPP", "WD_1_1_1"),
+  SRG = process_site(sites$SRG, "SRG", "GPP", "WD_1_1_1"),
+  WKG = process_site(sites$WKG, "WKG", "GPP", "WD_1_1_1")
 )
 
 gpp_df <- bind_rows(
@@ -107,23 +103,32 @@ plot_circular <- function(df, value_col, title_text, fill_label) {
     ) +
     geom_hline(aes(yintercept = 9), color = "lightgrey") +
     coord_polar() +
+    
     scale_fill_viridis_c(
       option = "viridis",
       name = fill_label,
       limits = c(vmin, vmax),
       breaks = c(vmin, vmax),
-      labels = scales::number_format(accuracy = 0.01)
+      labels = scales::number_format(accuracy = 0.01),
+      guide = guide_colorbar(
+        barwidth = 3.5,
+        barheight = 1
+      )
     ) +
+    
     scale_x_continuous(
-      breaks = df$direction,
-      labels = df$direction
+      breaks = NULL,
+      labels = NULL
     ) +
+    
     theme(
       axis.title = element_blank(),
       axis.ticks = element_blank(),
       axis.text.y = element_blank(),
-      axis.text.x = element_text(),
+      axis.text.x = element_blank(),
       legend.position = "bottom",
+      legend.title.position = "bottom",
+      legend.title = element_text(hjust = 0.5),
       panel.background = element_rect(fill = "white", color = "white"),
       panel.grid = element_blank(),
       plot.title = element_text(hjust = 0.5)
