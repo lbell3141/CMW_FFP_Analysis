@@ -1,259 +1,235 @@
-# make a table of statistical relationships between GPP/carbon fluxes and directional 
-# geospatial values (estimated in CreateGeoSpatFrames.R)
-
 library(dplyr)
 library(tidyr)
-library(lubridate)
-library(gt)
-library(stringr)
 library(purrr)
+library(lubridate)
+library(ggplot2)
+library(stringr)
 
+#===============================================================================
+# 1. load 30min RF predictions
+#===============================================================================
 
-geospat <- readRDS("./SeriousStuff/Data/RasterStack/DirGeosDf468_meanNAIP_corCMW_v.rds")
-
-# pull summer fluxes for sites--------------------------------------------------
-deg_int    <- seq(0, 360, by = 20)
-deg_labels <- seq(20, 360, by = 20)
-sites <- list(
-  CMW = "./SeriousStuff/Data/AMF_US-CMW_BASE_HH_2-5.csv",
-  SRM = "./SeriousStuff/Data/AMF_US-SRM_FLUXNET_FULLSET_HH_2004-2024_4-7.csv",
-  SRG = "./SeriousStuff/Data/AMF_US-SRG_FLUXNET_FULLSET_HH_2008-2024_5-7.csv",
-  WKG = "./SeriousStuff/Data/AMF_US-Wkg_FLUXNET_FULLSET_HH_2004-2024_4-7.csv"
+site_files <- list(
+  CMW = "./SeriousStuff/Data/RandomForestOutputs/cmwmm_rf_resultsPI.RDS",
+  SRM = "./SeriousStuff/Data/RandomForestOutputs/srmmm_rf_resultsPI.RDS",
+  SRG = "./SeriousStuff/Data/RandomForestOutputs/srgmm_rf_resultsPI.RDS",
+  WKG = "./SeriousStuff/Data/RandomForestOutputs/wkgmm_rf_resultsPI.RDS"
 )
 
-process_site <- function(file, site_name, nee_col, gpp_col, reco_col, wind_col, skip = 0) {
-  df <- read.csv(file, na.strings = "-9999", skip = skip) %>%
-    mutate(TIMESTAMP_START = ymd_hm(as.character(TIMESTAMP_START))) %>%
-    transmute(
-      yyyy     = year(TIMESTAMP_START),
-      mm       = month(TIMESTAMP_START),
-      HH_UTC   = hour(TIMESTAMP_START),
-      nee      = !!sym(nee_col),
-      gpp      = !!sym(gpp_col),
-      reco     = !!sym(reco_col),
-      wind_dir = !!sym(wind_col)
-    ) %>%
-    filter(HH_UTC >= 8 & HH_UTC <= 17,
-           mm %in% 5:7) %>%
-    drop_na()
-  
-  df_avg <- df %>%
-    mutate(
-      direction = as.numeric(as.character(
-        cut(wind_dir, breaks = deg_int, include.lowest = TRUE, labels = deg_labels)
-      )),
-      site = site_name
-    ) %>%
-    group_by(site, direction) %>%
-    summarise(
-      nee  = mean(nee, na.rm = TRUE),
-      gpp  = mean(gpp, na.rm = TRUE),
-      reco = mean(reco, na.rm = TRUE),
-      .groups = "drop"
-    )
-  
-  return(df_avg)
-}
+site_summaries <- imap(site_files, ~{
+  readRDS(.x) %>%
+    map_dfr(~ .x$predictions, .id = "ym_id") %>%
+    mutate(site = .y)
+})
 
-#pull site data with function
-site_plot_dfs <- list(
-  CMW = process_site(sites$CMW, "CMW", "NEE_PI", "GPP_PI", "RECO_PI", "WD_1_1_1", skip = 2),
-  SRM = process_site(sites$SRM, "SRM", "NEE_VUT_REF", "GPP_DT_VUT_REF", "RECO_DT_VUT_REF", "WD"),
-  SRG = process_site(sites$SRG, "SRG", "NEE_VUT_REF", "GPP_DT_VUT_REF", "RECO_DT_VUT_REF", "WD"),
-  WKG = process_site(sites$WKG, "WKG", "NEE_VUT_REF", "GPP_DT_VUT_REF", "RECO_DT_VUT_REF", "WD")
-)
-
-all_plot_df <- bind_rows(site_plot_dfs)%>%
-  drop_na()
-
-#combine geospat and tower data-------------------------------------------------
-
-combined_df <- all_plot_df %>%
-  merge(geospat, by = c("site", "direction"))
-
-#reformat janky raster stack layer naming
-combined_summary <- combined_df %>%
-  
+all_df <- site_summaries %>%
+  bind_rows() %>%
   mutate(
-    variable = str_to_lower(str_extract(layer, "^[^_]+")),
-    dir_num  = as.integer(str_extract(layer, "(?<=dir)\\d+"))
-  ) %>%
-  
-  group_by(site, direction, variable) %>%
-  arrange(dir_num, .by_group = TRUE) %>%
-  mutate(site_index = row_number()) %>%
-  ungroup() %>%
-  
+    date = make_datetime(yyyy, mm, day, HH_UTC, MM)
+  )
+
+#===============================================================================
+# 2. Prep season definitions
+#===============================================================================
+
+all_df <- all_df %>%
   mutate(
     season = case_when(
-      variable %in% c("ndvi","lai") & site == "CMW" & site_index == 1 ~ "monsoon",
-      variable %in% c("ndvi","lai") & site == "CMW" & site_index == 2 ~ "postmonsoon",
-      variable %in% c("ndvi","lai") & site == "CMW" & site_index == 3 ~ "premonsoon",
-      variable %in% c("ndvi","lai") & site == "CMW" & site_index == 4 ~ "winter",
-      
-      variable %in% c("ndvi","lai") & site != "CMW" & site_index == 1 ~ "postmonsoon",
-      variable %in% c("ndvi","lai") & site != "CMW" & site_index == 2 ~ "premonsoon",
-      variable %in% c("ndvi","lai") & site != "CMW" & site_index == 3 ~ "winter",
-      
-      TRUE ~ NA_character_
+      mm %in% c(4,5,6)  ~ "Premonsoon",
+      mm %in% c(7,8,9)  ~ "Monsoon",
+      mm %in% c(10,11)  ~ "Postmonsoon",
+      TRUE              ~ "Winter"
+    )
+  )
+
+#===============================================================================
+# 3. calc mean seasonal residual flux and add seasons
+#===============================================================================
+
+flux_seasonal <- all_df %>%
+  group_by(site, yyyy, season, dir_group) %>%
+  summarise(
+    residual = mean(resid_gpp, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  rename(direction = dir_group) %>%
+  mutate(direction = as.numeric(as.character(direction)))
+
+flux_seasonal <- flux_seasonal %>%
+  mutate(
+    season = factor(season,
+                    levels = c("Winter","Premonsoon","Monsoon","Postmonsoon"))
+  )
+
+#===============================================================================
+# 4. load spatial data
+#===============================================================================
+
+spatial_df <- read.csv("./SeriousStuff/Data/RasterStack/MaskedSpatialData.csv")
+
+#===============================================================================
+# 5. pull static variables (height, cover, topo)
+#===============================================================================
+
+spatial_static <- spatial_df %>%
+  filter(variable %in% c("twi", "chm", "cancov")) %>%
+  rename(value = weighted_mean) %>%
+  mutate(
+    predictor = case_when(
+      variable == "twi" ~ "Topography",
+      variable == "chm" ~ "Canopy Height",
+      variable == "cancov" ~ "Canopy Cover"
+    )
+  ) %>%
+  select(site, direction, predictor, value)
+
+#===============================================================================
+# 6. format dynamic variables (lai, ndvi)
+#===============================================================================
+
+spatial_seasonal <- spatial_df %>%
+  filter(variable %in% c("ndvi", "lai")) %>%
+  mutate(
+    variable = tolower(variable),
+    
+    season = case_when(
+      mm %in% c(4,5,6)  ~ "Premonsoon",
+      mm %in% c(7,8,9)  ~ "Monsoon",
+      mm %in% c(10,11)  ~ "Postmonsoon",
+      TRUE              ~ "Winter"
     ),
     
-    layer_clean = case_when(
-      variable %in% c("ndvi","lai") ~ paste(variable, season, sep = "_"),
-      variable %in% c("chm","cancov","twi") ~ variable
+    value = weighted_mean,
+    
+    predictor = case_when(
+      variable == "ndvi" ~ "NDVI",
+      variable == "lai"  ~ "LAI"
     )
   ) %>%
-  
-  group_by(site, direction, nee, gpp, reco, layer_clean) %>%
-  summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-  
-  pivot_wider(
-    names_from = layer_clean,
-    values_from = value
+  select(site, yyyy, direction, season, predictor, value)
+
+#===============================================================================
+# 7. Combine data frames
+#===============================================================================
+
+analysis_static <- flux_seasonal %>%
+  left_join(spatial_static, by = c("site", "direction"))
+
+analysis_static <- analysis_static %>%
+  mutate(predictor = predictor)
+
+analysis_seasonal <- flux_seasonal %>%
+  left_join(
+    spatial_seasonal,
+    by = c("site", "direction", "season", "yyyy")
   )
 
+analysis_df <- bind_rows(
+  analysis_static,
+  analysis_seasonal
+) %>%
+  drop_na(residual, value)
 
-#saveRDS(combined_summary, "./SeriousStuff/Data/RasterStack/GeosFlux_df468_v.rds")  
-  
-# pull geos vars
-geo_vars <- names(combined_summary)[!names(combined_summary) %in% c("site", "direction", "gpp", "nee", "reco")]
+#===============================================================================
+# 8. Run regressions and use test size correction (bonferroni for FWER)
+#===============================================================================
 
-#func to calc stats at a given site: pearson's r and regression values
-compute_site_stats <- function(df_site, flux = "gpp", geo_vars) {
-  
-  map_dfr(geo_vars, function(var) {
+season_year_models <- analysis_df %>%
+  group_by(site, yyyy, season, predictor) %>%
+  group_modify(~{
     
-    x <- df_site[[var]]
-    y <- df_site[[flux]]
+    if(nrow(.x) < 5) return(tibble())
     
-    # remove NA pairs
-    ok <- complete.cases(x, y)
-    x  <- x[ok]
-    y  <- y[ok]
+    m <- lm(residual ~ value, data = .x)
     
-    if (length(x) < 3) {
-      return(data.frame(
-        variable = var,
-        cor = NA,
-        slope = NA,
-        r2 = NA,
-        p = NA,
-        sig = ""
-      ))
-    }
-    
-    lm_fit <- lm(y ~ x)
-    summ   <- summary(lm_fit)
-    
-    p_val <- summ$coefficients[2, "Pr(>|t|)"]
-    
-    sig <- case_when(
-      p_val < 0.001 ~ "***",
-      p_val < 0.01  ~ "**",
-      p_val < 0.05  ~ "*",
-      TRUE          ~ ""
+    tibble(
+      r2 = summary(m)$r.squared,
+      slope = coef(m)[2],
+      corr = cor(.x$residual, .x$value, use = "complete.obs"),
+      p = summary(m)$coefficients[2,4],
+      n = nrow(.x)
     )
-    
-    data.frame(
-      variable = var,
-      cor      = cor(x, y),
-      slope    = coef(lm_fit)[2],
-      r2       = summ$r.squared,
-      p        = p_val,
-      sig      = sig
-    )
-  })
-}
-
-stat_table <- combined_summary %>%
-  group_by(site) %>%
-  group_modify(~ compute_site_stats(.x, flux = "gpp", geo_vars)) %>%
+  }) %>%
   ungroup()
 
-#write.csv(stat_table, "./SeriousStuff/Data/RasterStack/GeosFluxStats_v.csv")
-
-# 
-# stat_table %>%
-#   mutate(
-#     cor   = round(cor, 2),
-#     slope = round(slope, 3),
-#     r2    = round(r2, 2),
-#     p     = signif(p, 2)
-#   ) %>%
-#   arrange(site, variable) %>%
-#   gt(groupname_col = "site") %>%
-#   tab_header(
-#     title = "Relationships between GPP and Geospatial Variables",
-#     subtitle = "Directional footprint–weighted predictors"
-#   ) %>%
-#   cols_label(
-#     variable = "Geospatial variable",
-#     cor      = "Pearson r",
-#     slope    = "Slope",
-#     r2       = expression(R^2),
-#     p        = "p-value",
-#     sig      = ""
-#   ) %>%
-#   tab_source_note(
-#     source_note = "Significance codes: * p < 0.05, ** p < 0.01, *** p < 0.001"
-#   )
-
-stat_table <- stat_table %>%
-  mutate(sig = case_when(
-    p < 0.001 ~ "***",
-    p < 0.01  ~ "**",
-    p < 0.05  ~ "*",
-    TRUE      ~ ""
-  ))
-
-stat_table <- stat_table %>%
+season_year_models <- season_year_models %>%
+  group_by(site, yyyy, predictor) %>%
   mutate(
-    cor_val   = ifelse(!is.na(cor), paste0(round(cor, 2), sig), NA),
-    slope_val = ifelse(!is.na(slope), paste0(round(slope, 2), sig), NA),
-    r2_val    = ifelse(!is.na(r2), paste0(round(r2, 2), sig), NA),
-    p_val     = ifelse(!is.na(p), paste0(round(p, 2), sig), NA)
-  )
-
-stat_table_wide <- stat_table %>%
-  select(site, variable, cor_val, slope_val, r2_val, p_val) %>%
-  pivot_longer(
-    cols = c(cor_val, slope_val, r2_val, p_val),
-    names_to = "stat",
-    values_to = "value"
+    p_adj = p.adjust(p, method = "bonferroni"),
+    sig = p_adj < 0.05
   ) %>%
-  unite("site_stat", site, stat) %>%
-  pivot_wider(
-    names_from = site_stat,
-    values_from = value
+  ungroup()
+
+#===============================================================================
+# 9. Prep plot order for data/labels
+#===============================================================================
+
+season_year_models <- season_year_models %>%
+  mutate(
+    season = factor(season,
+                    levels = c("Winter","Premonsoon","Monsoon","Postmonsoon")),
+    
+    site = factor(site,
+                  levels = c("CMW","SRM","SRG","WKG")),
+    
+    predictor = factor(predictor,
+                       levels = c(
+                         "Topography",
+                         "Canopy Cover",
+                         "Canopy Height",
+                         "NDVI",
+                         "LAI"
+                       ))
   )
 
-stat_table_wide <- stat_table_wide %>%
-  mutate(variable = recode(variable,
-                           cancov = "% Canopy Cover",
-                           chm    = "Canopy Height",
-                           ndvi   = "NDVI",
-                           lai    = "LAI",
-                           twi    = "TWI"
-  ))
-
-colnames(stat_table_wide) <- colnames(stat_table_wide) %>%
-  str_replace("_cor_val$", " Correlation") %>%
-  str_replace("_slope_val$", " Slope") %>%
-  str_replace("_r2_val$", " R²") %>%
-  str_replace("_p_val$", " p-value")
-
-gt_tbl <- stat_table_wide %>%
-  gt(rowname_col = "variable") %>%
-  tab_header(
-    title = "GPP and Geospatial Data Relationships",
-    subtitle = " * p < 0.05, ** p < 0.01, *** p < 0.001"
-  ) %>%
-  tab_spanner(label = "CMW", columns = contains("CMW")) %>%
-  tab_spanner(label = "SRM", columns = contains("SRM")) %>%
-  tab_spanner(label = "SRG", columns = contains("SRG")) %>%
-  tab_spanner(label = "Wkg", columns = contains("Wkg")) %>%
-  tab_options(
-    table.font.size = 12,
-    data_row.padding = px(8)
+season_year_models <- season_year_models %>%
+  mutate(
+    sig_dir = case_when(
+      sig & corr > 0 ~ "positive",
+      sig & corr < 0 ~ "negative",
+      TRUE ~ "ns"
+    )
   )
+#===============================================================================
+# 10. Generate Plot
+#===============================================================================
 
+ggplot(season_year_models,
+       aes(x = yyyy,
+           y = season,
+           fill = r2)) +
+  
+  geom_tile(color = "gray80") +
+  geom_point(
+    data = subset(season_year_models, sig),
+    aes(color = corr),
+    size = 3
+  ) +
+  scale_color_gradient2(
+    low = "lightblue",
+    mid = "white",
+    high = "pink",
+    midpoint = 0,
+    guide = "none"
+  )+
+  facet_grid(predictor ~ site) +
+  
+  scale_fill_viridis_c(option = "viridis", direction = -1) +
+  scale_alpha_manual(values = c(0, 1), guide = "none") +
+  
+  scale_x_continuous(
+    breaks = seq(2005, 2020, by = 5)
+  ) +
+  
+  labs(
+    x = "",
+    y = "",
+    fill = expression(R^2)
+  ) +
+  
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text.y = element_text(angle = 0),
+    panel.spacing = unit(1.2, "lines")
+  )
