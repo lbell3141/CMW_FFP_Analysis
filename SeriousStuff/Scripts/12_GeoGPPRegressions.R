@@ -196,8 +196,8 @@ season_year_models <- season_year_models %>%
 
 ggplot(season_year_models,
        aes(x = yyyy,
-           y = season,
-           fill = r2)) +
+           y = factor(season, levels = c("Postmonsoon", "Monsoon", "Premonsoon", "Winter")),
+                      fill = r2)) +
   
   geom_tile(color = "gray80") +
   geom_point(
