@@ -83,14 +83,14 @@ all_plot_df$site <- factor(all_plot_df$site, levels = c("CMW","SRM","SRG","WKG")
 r2_df <- all_plot_df %>%
   group_by(site, group) %>%
   summarise(
-    r2 = {
-      fit <- mcreg(x, y, method.reg = "Deming")
-      cor(x, y)^2
-    },
+    cor_test = list(cor.test(x, y, method = "spearman")),
     .groups = "drop"
   ) %>%
   mutate(
-    r2_label = paste0("R² = ", round(r2, 3))
+    rho = sapply(cor_test, function(ct) ct$estimate),
+    p   = sapply(cor_test, function(ct) ct$p.value),
+    sig = ifelse(p < 0.05, "*", ""),
+    label = paste0("rho = ", round(rho, 3), sig)
   )
 
 
@@ -123,7 +123,7 @@ make_density_plot <- function(df, group_name, y_label) {
     )+
   geom_text(
       data = r2_sub,
-      aes(label = r2_label),
+      aes(label = label),
       x = -Inf, y = Inf,
       hjust = -0.3, vjust = 2,
       inherit.aes = FALSE,
